@@ -3,7 +3,7 @@
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
   "last_updated": "2026-06-16",
-  "total": 111,
+  "total": 117,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -1118,6 +1118,66 @@
       "category": "Tools & Integrations",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/nebelov/yandex-direct-for-all/HEAD/plugins/yandex-direct-for-all/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "ScrapeGraph AI",
+      "url": "https://github.com/ScrapeGraphAI/just-scrape",
+      "owner": "ScrapeGraphAI",
+      "repo": "just-scrape",
+      "description": "AI-powered web scraping CLI to search, scrape, extract structured JSON, crawl, and monitor web pages via the ScrapeGraph AI API.",
+      "category": "Tools & Integrations",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/ScrapeGraphAI/just-scrape/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "AgentBox",
+      "url": "https://github.com/madarco/agentbox",
+      "owner": "madarco",
+      "repo": "agentbox",
+      "description": "Run coding agents in parallel, each in its own sandboxed box (local Docker or cloud VMs via Hetzner/Daytona/Vercel/E2B), with sub-1s checkpoint starts, a per-box browser + VS Code, and host-held git credentials.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/madarco/agentbox/HEAD/plugins/agentbox/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Skill Routing Kit",
+      "url": "https://github.com/juew/Skill-Routing-Kit",
+      "owner": "juew",
+      "repo": "Skill-Routing-Kit",
+      "description": "Local-first Codex routing guard that improves skill and plugin selection with a capability registry, negative examples, and explainable diagnostics.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/juew/Skill-Routing-Kit/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Citadel",
+      "url": "https://github.com/SethGammon/Citadel",
+      "owner": "SethGammon",
+      "repo": "Citadel",
+      "description": "Agent orchestration layer for OpenAI Codex and Claude Code with durable campaign memory, /do intent routing, lifecycle safety hooks, cost telemetry, and parallel agents in isolated git worktrees.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/SethGammon/Citadel/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "MailAgent",
+      "url": "https://github.com/Alex0nder/MailAgent",
+      "owner": "Alex0nder",
+      "repo": "MailAgent",
+      "description": "Temporary inboxes for Codex - OTP, magic links, signup QA, simulate-first autotests (23 MCP tools).",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/Alex0nder/MailAgent/HEAD/examples/codex/plugin/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Vanguard Frontier Agentic",
+      "url": "https://github.com/Raishin/vanguard-frontier-agentic",
+      "owner": "Raishin",
+      "repo": "vanguard-frontier-agentic",
+      "description": "Enterprise-grade agentic workflow marketplace with cloud, zero-trust, compliance, ERP, and platform specialist agents, skills, MCP references, and live-mutation guardrails across Codex and other coding agents.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/hashgraph-online/awesome-codex-plugins/HEAD/plugins/Raishin/vanguard-frontier-agentic/.codex-plugin/plugin.json"
     }
   ]
 }
