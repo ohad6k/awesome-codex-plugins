@@ -1,6 +1,0 @@
-# Files to exclude from Codex plugin packaging
-node_modules/
-.git/
-.DS_Store
-*.log
-*.tmp
