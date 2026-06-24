@@ -2943,6 +2943,53 @@ __MOUNTS__
         self.assertFalse(any(item.rule_id == "R007" for item in violations))
         self.assertFalse(any(item.rule_id == "R017" for item in violations))
 
+    def test_allows_mongodb_service_host_port_with_credential_secret(self):
+        violations = self.run_checker(
+            """
+            ```yaml
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: demo
+            spec:
+              template:
+                spec:
+                  initContainers:
+                    - name: wait-for-data-store
+                      image: busybox:1.36.1
+                      imagePullPolicy: IfNotPresent
+                      env:
+                        - name: MONGO_HOST
+                          value: ${{ defaults.app_name }}-mongo-mongodb.${{ SEALOS_NAMESPACE }}.svc.cluster.local
+                        - name: MONGO_PORT
+                          value: "27017"
+                  containers:
+                    - name: demo
+                      image: appwrite/appwrite:1.9.0
+                      imagePullPolicy: IfNotPresent
+                      env:
+                        - name: _APP_DB_ADAPTER
+                          value: mongodb
+                        - name: _APP_DB_HOST
+                          value: ${{ defaults.app_name }}-mongo-mongodb.${{ SEALOS_NAMESPACE }}.svc.cluster.local
+                        - name: _APP_DB_PORT
+                          value: "27017"
+                        - name: _APP_DB_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: ${{ defaults.app_name }}-mongo-mongodb-account-root
+                              key: username
+                        - name: _APP_DB_PASS
+                          valueFrom:
+                            secretKeyRef:
+                              name: ${{ defaults.app_name }}-mongo-mongodb-account-root
+                              key: password
+            ```
+            """
+        )
+        self.assertFalse(any(item.rule_id == "R007" for item in violations))
+        self.assertFalse(any(item.rule_id == "R017" for item in violations))
+
     def test_ignores_known_non_database_connection_env_names(self):
         violations = self.run_checker(
             """
@@ -3103,6 +3150,39 @@ __MOUNTS__
                               key: password
                         - name: DATABASE_URL
                           value: postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/postgres
+            ```
+            """
+        )
+        self.assertFalse(any(item.rule_id == "R017" for item in violations))
+
+    def test_allows_composed_database_host_with_secret_derived_host_port(self):
+        violations = self.run_checker(
+            """
+            ```yaml
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: demo
+            spec:
+              template:
+                spec:
+                  containers:
+                    - name: demo
+                      image: nginx:1.27.2
+                      imagePullPolicy: IfNotPresent
+                      env:
+                        - name: PG_HOST
+                          valueFrom:
+                            secretKeyRef:
+                              name: ${{ defaults.app_name }}-pg-conn-credential
+                              key: host
+                        - name: PG_PORT
+                          valueFrom:
+                            secretKeyRef:
+                              name: ${{ defaults.app_name }}-pg-conn-credential
+                              key: port
+                        - name: GF_DATABASE_HOST
+                          value: $(PG_HOST):$(PG_PORT)
             ```
             """
         )
@@ -4773,6 +4853,69 @@ __MOUNTS__
                             requests:
                               cpu: 30m
                               memory: 160Mi
+                            limits:
+                              cpu: 300m
+                              memory: 384Mi
+                """,
+            )
+
+            violations = CHECKER.run_checks(
+                skill,
+                refs_dir,
+                rules_file,
+                additional_include_paths=["template/demo/index.yaml"],
+            )
+            self.assertTrue(any(item.rule_id == "R038" for item in violations))
+
+    def test_detects_invalid_resource_ladder_with_template_conditionals(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            skill = root / "SKILL.md"
+            refs_dir = root / "references"
+            refs_file = refs_dir / "sample.md"
+            rules_file = refs_dir / "rules-registry.yaml"
+            artifact_file = root / "template" / "demo" / "index.yaml"
+
+            write_file(skill, "# no yaml snippets\n")
+            write_file(refs_file, "# refs\n")
+            write_registry(rules_file)
+            write_file(
+                artifact_file,
+                """
+                apiVersion: apps/v1
+                kind: StatefulSet
+                metadata:
+                  name: demo
+                  labels:
+                    cloud.sealos.io/app-deploy-manager: demo
+                    app: demo
+                  annotations:
+                    originImageName: grafana/grafana:12.0.2
+                spec:
+                  selector:
+                    matchLabels:
+                      app: demo
+                  template:
+                    spec:
+                      automountServiceAccountToken: false
+                      imagePullSecrets:
+                        - name: demo
+                      containers:
+                        - name: demo
+                          image: grafana/grafana:12.0.2
+                          imagePullPolicy: IfNotPresent
+                          env:
+                            ${{ if(inputs.use_postgresql === 'true') }}
+                            - name: PG_HOST
+                              valueFrom:
+                                secretKeyRef:
+                                  name: demo-pg-conn-credential
+                                  key: host
+                            ${{ endif() }}
+                          resources:
+                            requests:
+                              cpu: 50m
+                              memory: 96Mi
                             limits:
                               cpu: 300m
                               memory: 384Mi

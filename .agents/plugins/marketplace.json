@@ -34,6 +34,21 @@
       "icon": "./plugins/GanyuanRan/Aegis/assets/aegis-small.svg"
     },
     {
+      "name": "agent-guard",
+      "displayName": "Agent Guard",
+      "source": {
+        "source": "local",
+        "path": "./plugins/JeongJaeSoon/agent-guard"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Real-time secret-leak guardrails for AI coding agents (Claude Code, Codex), Git hooks, and CI.",
+      "icon": "./plugins/JeongJaeSoon/agent-guard/assets/icon.png"
+    },
+    {
       "name": "agent-harness-skills",
       "displayName": "Agent Harness Skills",
       "source": {
@@ -91,6 +106,36 @@
       },
       "category": "Development & Workflow",
       "description": "DevOps layer for coding agents with flow, feedback, and memory that compounds between sessions."
+    },
+    {
+      "name": "agentpack",
+      "displayName": "AgentPack",
+      "source": {
+        "source": "local",
+        "path": "./plugins/vishal2612200/agentpack"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Ranks repo context for Codex with likely files, skill recommendations, agent rules, commands, warnings, and compact task-focused packs before editing.",
+      "icon": "./plugins/vishal2612200/agentpack/assets/icon.svg"
+    },
+    {
+      "name": "agentry",
+      "displayName": "Agentry Observability",
+      "source": {
+        "source": "local",
+        "path": "./plugins/fr33dr4g0n/agentry-public"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Agent-native product analytics, error logging, and deploy attribution for coding agents through one HTTP API.",
+      "icon": "./plugins/fr33dr4g0n/agentry-public/assets/icon.png"
     },
     {
       "name": "agiflow-ai-plugin",
@@ -165,6 +210,21 @@
       "category": "Development & Workflow",
       "description": "Gives coding agents the architecture, rules, and prior decisions of the repo via skills, hooks, and MCP — so new changes land where the project says they belong across Claude Code, Cursor, and Codex CLI.",
       "icon": "./plugins/archcore-ai/plugin/assets/icon.png"
+    },
+    {
+      "name": "armorcodex",
+      "displayName": "ArmorCodex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/armoriq/armorCodex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Intent-based security for Codex with MCP plan registration, policy gating, CSRG cryptographic proofs, and audit logging on `bash` and `apply_patch`.",
+      "icon": "./plugins/armoriq/armorCodex/assets/armoriq-logo.png"
     },
     {
       "name": "bringyour-migration-auditor",
@@ -271,6 +331,21 @@
       "icon": "./plugins/nyldn/claude-octopus/assets/octopus-icon.svg"
     },
     {
+      "name": "clean-room",
+      "displayName": "Clean Room",
+      "source": {
+        "source": "local",
+        "path": "./plugins/whit3rabbit/clean-room-skill"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Spec-first clean-room workflow for authorized source analysis, behavioral specs, role separation, and verification without replacement code.",
+      "icon": "./plugins/whit3rabbit/clean-room-skill/assets/icon.svg"
+    },
+    {
       "name": "codebase-recon",
       "displayName": "Codebase Recon",
       "source": {
@@ -356,6 +431,20 @@
       "category": "Development & Workflow",
       "description": "Catches AI-introduced tech debt at write-time: hooks log every deferral to a registry in your repo and a review skill ranks paydown by file churn.",
       "icon": "./plugins/bcanfield/agentic-tech-debt/assets/icon.svg"
+    },
+    {
+      "name": "designer-skill",
+      "displayName": "Designer Skill",
+      "source": {
+        "source": "local",
+        "path": "./plugins/Pythoughts-labs/designer-skill"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Plug-and-play MCP that gives your agent UI superpowers. One install: design skill + MCP server, zero config."
     },
     {
       "name": "dev-skills",
@@ -506,6 +595,21 @@
       "icon": "./plugins/hashgraph-online/hol-guard-plugin/assets/icon.png"
     },
     {
+      "name": "codex-honcho",
+      "displayName": "Honcho",
+      "source": {
+        "source": "local",
+        "path": "./plugins/plastic-labs/codex-honcho"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Persistent cross-session memory for Codex powered by Honcho — lifecycle hooks capture each session and inject relevant context back at session start, so Codex remembers your preferences, projects, and decisions across restarts.",
+      "icon": "./plugins/plastic-labs/codex-honcho/assets/icon.svg"
+    },
+    {
       "name": "hotl",
       "displayName": "HOTL Plugin",
       "source": {
@@ -609,6 +713,35 @@
       "category": "Development & Workflow",
       "description": "Delegate tasks to specialist AI agents via the HOL Registry, plan, find, summon, and recover sessions.",
       "icon": "./plugins/hashgraph-online/registry-broker-codex-plugin/assets/icon.png"
+    },
+    {
+      "name": "river-review",
+      "displayName": "River Review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/s977043/river-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Versioned Skill Registry of code-review skills driven by a perspective-based review agent (code, security, performance, architecture, testing, adversarial) that verifies findings against the diff."
+    },
+    {
+      "name": "roadmapsmith",
+      "displayName": "RoadmapSmith",
+      "source": {
+        "source": "local",
+        "path": "./plugins/PapiScholz/roadmapsmith"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Evidence-backed ROADMAP.md workflows for AI coding agents with validation, sync, and roadmap generation across any tech stack.",
+      "icon": "./plugins/PapiScholz/roadmapsmith/assets/palette.png"
     },
     {
       "name": "runtype-skills",
@@ -859,6 +992,21 @@
       "category": "Development & Workflow",
       "description": "Skills for VillageSQL including building extensions from scratch and porting PostgreSQL extensions to VillageSQL.",
       "icon": "./plugins/villagesql/villagesql-skills/assets/icon.svg"
+    },
+    {
+      "name": "wingman",
+      "displayName": "Wingman",
+      "source": {
+        "source": "local",
+        "path": "./plugins/lsshym/wingman.ai"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Cross-platform AI coding plugin for project memory, data-contract alignment, and project-map discovery across Codex, Claude Code, Cursor, and Gemini.",
+      "icon": "./plugins/lsshym/wingman.ai/assets/icon.svg"
     },
     {
       "name": "workflow-kit",
@@ -1563,6 +1711,21 @@
       "category": "Tools & Integrations",
       "description": "AI-powered web scraping CLI to search, scrape, extract structured JSON, crawl, and monitor web pages via the ScrapeGraph AI API.",
       "icon": "./plugins/ScrapeGraphAI/just-scrape/assets/icon.svg"
+    },
+    {
+      "name": "seo-dungeon",
+      "displayName": "SEO Dungeon",
+      "source": {
+        "source": "local",
+        "path": "./plugins/avalonreset/seo-dungeon"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Gamified local SEO audits that turn website issues into 16-bit dungeon battles for Codex, Claude, and Gemini CLI workflows.",
+      "icon": "./plugins/avalonreset/seo-dungeon/assets/icon.svg"
     },
     {
       "name": "sitemd",
