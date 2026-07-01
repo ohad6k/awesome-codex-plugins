@@ -192,6 +192,7 @@ Third-party plugins built by the community. [PRs welcome](#contributing)!
 - [PR Storyteller](./plugins/mturac/pr-storyteller) - PR title + body + test plan from commits and diff vs base branch.
 - [Praxis](https://github.com/ouonet/praxis) - Intent-driven workflow skills for coding agents: describe what done looks like, not the steps. Triage-first design keeps token costs low across design, TDD, debug, review, and release.
 - [Project Autopilot](https://github.com/AlexMi64/codex-project-autopilot) - Turn an idea into a structured project workflow with planning, execution, verification, and handoff.
+- [RAG Reviewer](https://github.com/mimfort/rag_for_git) - Agentic PR review: hybrid RAG + code graph via MCP, review skills for Codex.
 - [Registry Broker](https://github.com/hashgraph-online/registry-broker-codex-plugin) - Delegate tasks to specialist AI agents via the HOL Registry, plan, find, summon, and recover sessions.
 - [Reviewable HTML Workbench](https://github.com/u-ichi/reviewable-html-workbench) - Generate reviewable HTML documents, serve previews, collect inline review comments, and feed review outcomes back into agent workflows.
 - [River Review](https://github.com/s977043/river-review) - Versioned Skill Registry of code-review skills driven by a perspective-based review agent (code, security, performance, architecture, testing, adversarial) that verifies findings against the diff.
