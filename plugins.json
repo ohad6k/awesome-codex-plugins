@@ -3,7 +3,7 @@
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
   "last_updated": "2026-07-04",
-  "total": 144,
+  "total": 145,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -618,6 +618,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/Habib0x0/spec-driven-plugin/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Spellbook Skills",
+      "url": "https://github.com/yyykf/spellbook-skills",
+      "owner": "yyykf",
+      "repo": "spellbook-skills",
+      "description": "Practical Claude Code and Codex skills for worktrees, PR/MR automation, review cleanup, YApi lookup, and Java DDD guidance.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/yyykf/spellbook-skills/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "Staff Engineer Mode",
