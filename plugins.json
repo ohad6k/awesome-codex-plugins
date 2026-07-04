@@ -3,7 +3,7 @@
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
   "last_updated": "2026-07-04",
-  "total": 146,
+  "total": 148,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -500,6 +500,16 @@
       "install_url": "https://raw.githubusercontent.com/LVTD-LLC/skills/HEAD/.codex-plugin/plugin.json"
     },
     {
+      "name": "Maestro",
+      "url": "https://github.com/mbanderas/maestro",
+      "owner": "mbanderas",
+      "repo": "maestro",
+      "description": "Opt-in local multi-CLI fusion engine and orchestration doctrine that fans a prompt across model CLIs, then judges and synthesizes one grounded answer.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/mbanderas/maestro/HEAD/.codex-plugin/plugin.json"
+    },
+    {
       "name": "Personal Data Protection",
       "url": "https://github.com/AltByteSG/personal-data-protection-skill",
       "owner": "AltByteSG",
@@ -668,6 +678,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/beefiker/superloopy/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Superpipelines",
+      "url": "https://github.com/gustavo-meilus/superpipelines",
+      "owner": "gustavo-meilus",
+      "repo": "superpipelines",
+      "description": "Design and run write/review-isolated multi-agent AI pipelines across Codex, Claude Code, OpenCode, Cursor, Windsurf, and Cline.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/gustavo-meilus/superpipelines/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "tailtest",

@@ -728,6 +728,21 @@
       "icon": "./plugins/LVTD-LLC/skills/assets/app-icon.png"
     },
     {
+      "name": "maestro",
+      "displayName": "Maestro",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mbanderas/maestro"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Opt-in local multi-CLI fusion engine and orchestration doctrine that fans a prompt across model CLIs, then judges and synthesizes one grounded answer.",
+      "icon": "./plugins/mbanderas/maestro/assets/icon.png"
+    },
+    {
       "name": "personal-data-protection",
       "displayName": "Personal Data Protection",
       "source": {
@@ -978,6 +993,21 @@
       "category": "Development & Workflow",
       "description": "Evidence-gated Codex loop harness with specialist skills, including near-pixel authorized website cloning backed by screenshots, assets, build output, and visual QA.",
       "icon": "./plugins/beefiker/superloopy/web/assets/luffy.svg"
+    },
+    {
+      "name": "superpipelines",
+      "displayName": "Superpipelines",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gustavo-meilus/superpipelines"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Design and run write/review-isolated multi-agent AI pipelines across Codex, Claude Code, OpenCode, Cursor, Windsurf, and Cline.",
+      "icon": "./plugins/gustavo-meilus/superpipelines/assets/superpowers-small.svg"
     },
     {
       "name": "tailtest",
