@@ -227,20 +227,6 @@
       "icon": "./plugins/armoriq/armorCodex/assets/armoriq-logo.png"
     },
     {
-      "name": "bgs-modding-superpowers",
-      "displayName": "BGS Modding Superpowers",
-      "source": {
-        "source": "local",
-        "path": "./plugins/BB-84C/bgs-modding-superpowers"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Development & Workflow",
-      "description": "Agentic Bethesda Game Studio modpack curation toolkit with MCP-driven xEdit conflict audit, MO2 control plane, BA2/BSA and Papyrus tooling, and skills for setup, dev-log, and release-changelog workflows."
-    },
-    {
       "name": "babok_analyst",
       "displayName": "BABOK Analyst",
       "source": {
@@ -254,6 +240,20 @@
       "category": "Development & Workflow",
       "description": "BABOK v3 business analysis agent with 16 MCP tools, a 9-stage pipeline, and human-in-the-loop approval gates.",
       "icon": "./plugins/GSkuza/BABOK_ANALYST/assets/icon.svg"
+    },
+    {
+      "name": "bgs-modding-superpowers",
+      "displayName": "BGS Modding Superpowers",
+      "source": {
+        "source": "local",
+        "path": "./plugins/BB-84C/bgs-modding-superpowers"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Agentic Bethesda Game Studio modpack curation toolkit with MCP-driven xEdit conflict audit, MO2 control plane, BA2/BSA and Papyrus tooling, and skills for setup, dev-log, and release-changelog workflows."
     },
     {
       "name": "boss",
@@ -1096,6 +1096,20 @@
       "icon": "./plugins/villagesql/villagesql-skills/assets/icon.svg"
     },
     {
+      "name": "waggle",
+      "displayName": "Waggle",
+      "source": {
+        "source": "local",
+        "path": "./plugins/Abhigyan-Shekhar/Waggle-mcp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Persistent graph-backed conversational memory for Codex that recalls project decisions, constraints, preferences, and outcomes across sessions."
+    },
+    {
       "name": "wingman",
       "displayName": "Wingman",
       "source": {
@@ -1109,20 +1123,6 @@
       "category": "Development & Workflow",
       "description": "Cross-platform AI coding-agent plugin for repo-local project memory, data-contract checks, and project-map discovery before agents edit code.",
       "icon": "./plugins/lsshym/wingman.ai/assets/icon.svg"
-    },
-    {
-      "name": "waggle",
-      "displayName": "Waggle",
-      "source": {
-        "source": "local",
-        "path": "./plugins/Abhigyan-Shekhar/Waggle-mcp"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Development & Workflow",
-      "description": "Persistent graph-backed conversational memory for Codex that recalls project decisions, constraints, preferences, and outcomes across sessions."
     },
     {
       "name": "workflow-kit",
@@ -1449,21 +1449,6 @@
       "icon": "./plugins/douglasmonsky/codex-usage-tracker/assets/icon.svg"
     },
     {
-      "name": "context-pack",
-      "displayName": "Context Pack",
-      "source": {
-        "source": "local",
-        "path": "./plugins/Rothschildiuk/context-pack"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Tools & Integrations",
-      "description": "Generate compact first-pass repository briefings for coding agents before deeper exploration.",
-      "icon": "./plugins/Rothschildiuk/context-pack/skills/context-pack/assets/context-pack-small.svg"
-    },
-    {
       "name": "contam-tools",
       "displayName": "CONTAM Tools",
       "source": {
@@ -1477,6 +1462,21 @@
       "category": "Tools & Integrations",
       "description": "Runs and inspects CONTAM airflow projects through a local MCP server with project guards, diagnostics, simulation helpers, and bridge workflows.",
       "icon": "./plugins/summer521521/CONTAM_plugin/assets/icon.svg"
+    },
+    {
+      "name": "context-pack",
+      "displayName": "Context Pack",
+      "source": {
+        "source": "local",
+        "path": "./plugins/Rothschildiuk/context-pack"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Generate compact first-pass repository briefings for coding agents before deeper exploration.",
+      "icon": "./plugins/Rothschildiuk/context-pack/skills/context-pack/assets/context-pack-small.svg"
     },
     {
       "name": "dataproduct-builder-dbt",
@@ -1860,6 +1860,20 @@
       "icon": "./plugins/jbaehova/pdf-monster/assets/pdf-monster.svg"
     },
     {
+      "name": "prompt-to-asset",
+      "displayName": "prompt-to-asset",
+      "source": {
+        "source": "local",
+        "path": "./plugins/MohamedAbdallah-14/prompt-to-asset"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Route image-generation prompts to 30+ models (DALL-E, Stable Diffusion, Flux, Midjourney, and more) through a single MCP interface. Install: `npm install -g prompt-to-asset`."
+    },
+    {
       "name": "pronounce",
       "displayName": "Pronounce",
       "source": {
@@ -1873,20 +1887,6 @@
       "category": "Tools & Integrations",
       "description": "Pronounce developer jargon out loud: an MCP server (lookup/search) and skill backed by a 1,721-entry sourced dictionary with IPA, audio, and cited pronunciations for kubectl, nginx, YAML, JWT, and more.",
       "icon": "./plugins/anzy-renlab-ai/pronounce/assets/icon.svg"
-    },
-    {
-      "name": "prompt-to-asset",
-      "displayName": "prompt-to-asset",
-      "source": {
-        "source": "local",
-        "path": "./plugins/MohamedAbdallah-14/prompt-to-asset"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Tools & Integrations",
-      "description": "Route image-generation prompts to 30+ models (DALL-E, Stable Diffusion, Flux, Midjourney, and more) through a single MCP interface. Install: `npm install -g prompt-to-asset`."
     },
     {
       "name": "remotion",
