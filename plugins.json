@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
-  "last_updated": "2026-07-04",
-  "total": 148,
+  "last_updated": "2026-07-05",
+  "total": 150,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -1060,6 +1060,16 @@
       "install_url": "https://raw.githubusercontent.com/entropy-data/dataproduct-builder-dbt/HEAD/.codex-plugin/plugin.json"
     },
     {
+      "name": "Digital Marketing Pro",
+      "url": "https://github.com/indranilbanerjee/digital-marketing-pro",
+      "owner": "indranilbanerjee",
+      "repo": "digital-marketing-pro",
+      "description": "Open-source AI marketing plugin for agencies — 154 skills, 25 specialist agents, 12-Part Strategy Flow, AEO/GEO, GSC AI Performance Report, Google Ads API v24, EU AI Act Article 50 / C2PA compliance.",
+      "category": "Tools & Integrations",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/indranilbanerjee/digital-marketing-pro/HEAD/.codex-plugin/plugin.json"
+    },
+    {
       "name": "Dodo Payments",
       "url": "https://github.com/dodopayments/dodo-agent-plugin",
       "owner": "dodopayments",
@@ -1308,6 +1318,16 @@
       "category": "Tools & Integrations",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/jbaehova/pdf-monster/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "plori",
+      "url": "https://github.com/plori-ai/codex-plugin",
+      "owner": "plori-ai",
+      "repo": "codex-plugin",
+      "description": "Create and drive plori cloud agents (each an AI agent on its own cloud computer) over plori's remote MCP server, with OAuth auto-discovery.",
+      "category": "Tools & Integrations",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/plori-ai/codex-plugin/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "prompt-to-asset",

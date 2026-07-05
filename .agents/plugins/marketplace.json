@@ -282,7 +282,8 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Development & Workflow",
-      "description": "BMAD pipeline plugin that orchestrates a full requirements-to-deploy workflow across nine specialist agents with an auditable runtime DAG and quality gates, for Claude Code, Codex, OpenClaw, and Antigravity."
+      "description": "BMAD pipeline plugin that orchestrates a full requirements-to-deploy workflow across nine specialist agents with an auditable runtime DAG and quality gates, for Claude Code, Codex, OpenClaw, and Antigravity.",
+      "icon": "./plugins/echoVic/boss-skill/assets/boss-composer-icon.svg"
     },
     {
       "name": "bringyour-migration-auditor",
@@ -1553,6 +1554,21 @@
       "description": "Full data-product lifecycle on dbt for Entropy Data: scaffold, audit, and integrate projects with ODCS, ODPS, OpenLineage, and GitHub Actions."
     },
     {
+      "name": "digital-marketing-pro",
+      "displayName": "Digital Marketing Pro",
+      "source": {
+        "source": "local",
+        "path": "./plugins/indranilbanerjee/digital-marketing-pro"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Open-source AI marketing plugin for agencies — 154 skills, 25 specialist agents, 12-Part Strategy Flow, AEO/GEO, GSC AI Performance Report, Google Ads API v24, EU AI Act Article 50 / C2PA compliance.",
+      "icon": "./plugins/indranilbanerjee/digital-marketing-pro/assets/icon.svg"
+    },
+    {
       "name": "dodopayments",
       "displayName": "Dodo Payments",
       "source": {
@@ -1918,6 +1934,20 @@
       "category": "Tools & Integrations",
       "description": "Analyzes PDFs as extracted text, OCR text, rendered page images, and embedded figures for coding agents.",
       "icon": "./plugins/jbaehova/pdf-monster/assets/pdf-monster.svg"
+    },
+    {
+      "name": "plori",
+      "displayName": "plori",
+      "source": {
+        "source": "local",
+        "path": "./plugins/plori-ai/codex-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Create and drive plori cloud agents (each an AI agent on its own cloud computer) over plori's remote MCP server, with OAuth auto-discovery."
     },
     {
       "name": "prompt-to-asset",
