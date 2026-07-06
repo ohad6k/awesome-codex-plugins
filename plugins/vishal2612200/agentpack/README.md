@@ -14,10 +14,13 @@
 
 <p align="center">
   <a href="https://deepwiki.com/vishal2612200/agentpack"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-  <a href="https://pypi.org/project/agentpack-cli/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/agentpack-cli.svg"></a>
+  <a href="https://pypi.org/project/agentpack-cli/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/agentpack-cli.svg?cacheSeconds=300"></a>
   <a href="https://pepy.tech/projects/agentpack-cli"><img alt="PyPI downloads" src="https://static.pepy.tech/personalized-badge/agentpack-cli?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
-  <a href="https://www.npmjs.com/package/@vishal2612200/agentpack"><img alt="npm version" src="https://img.shields.io/npm/v/@vishal2612200/agentpack.svg"></a>
+  <a href="https://www.npmjs.com/package/@vishal2612200/agentpack"><img alt="npm version" src="https://img.shields.io/npm/v/@vishal2612200/agentpack.svg?cacheSeconds=300"></a>
   <a href="https://www.npmjs.com/package/@vishal2612200/agentpack"><img alt="npm downloads" src="https://img.shields.io/npm/dm/@vishal2612200/agentpack.svg"></a>
+  <a href="https://github.com/vishal2612200/agentpack/releases/latest"><img alt="Release evidence" src="https://img.shields.io/github/v/release/vishal2612200/agentpack?label=release%20evidence"></a>
+  <a href="https://github.com/vishal2612200/agentpack/actions/workflows/publish.yml"><img alt="PyPI trusted publishing" src="https://img.shields.io/badge/PyPI-trusted%20publishing-blue"></a>
+  <a href="https://github.com/vishal2612200/agentpack/actions/workflows/publish-npm.yml"><img alt="npm provenance" src="https://img.shields.io/badge/npm-provenance-blue"></a>
   <a href="https://hol.org/registry/plugins/agentpack%2Fagentpack"><img alt="HOL trust score" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Dagentpack%252Fagentpack%26metric%3Dtrust%26style%3Dflat"></a>
   <a href="https://hol.org/registry/plugins/agentpack%2Fagentpack"><img alt="HOL security score" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Dagentpack%252Fagentpack%26metric%3Dsecurity%26style%3Dflat"></a>
   <a href="https://github.com/vishal2612200/agentpack/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vishal2612200/agentpack/actions/workflows/ci.yml/badge.svg"></a>
@@ -136,6 +139,17 @@ npx @vishal2612200/agentpack start "fix auth token expiry"
 npx @vishal2612200/agentpack next
 ```
 
+## Release Trust
+
+Install surfaces intentionally point at the same local CLI:
+
+- PyPI publishes `agentpack-cli` through GitHub Actions trusted publishing.
+- npm publishes `@vishal2612200/agentpack` with npm provenance.
+- GitHub Releases include release-check, benchmark, wheel verification, and registry evidence.
+- HOL registry badges track packaged Codex plugin trust and security signals.
+
+Planned hardening: attach release checksums, publish an SBOM, and add SLSA-style provenance once the release artifact pipeline can produce them automatically.
+
 ## Proof So Far
 
 AgentPack's current public benchmark checks one narrow thing: whether selected context overlaps with files actually changed in historical commits. Treat it as evidence for a ranked starting map, not proof that any agent will finish every task faster or better.
@@ -143,12 +157,12 @@ AgentPack's current public benchmark checks one narrow thing: whether selected c
 | Signal | Result | Developer meaning |
 |---|---:|---|
 | Public commit cases | 107 | real historical file-selection checks |
-| Average recall | 65.7% | did AgentPack include files that mattered? |
-| Token precision | 51.4% | how much of pack was useful instead of noise? |
+| Average recall | 67.2% | did AgentPack include files that mattered? |
+| Token precision | 50.6% | how much of pack was useful instead of noise? |
 | Pack p50 | 315 tokens | typical compact starting context |
 | Pack p95 | 1,137 tokens | larger but still bounded starting context |
 
-Source: [`benchmarks/results/2026-06-25-public.md`](benchmarks/results/2026-06-25-public.md). Benchmark guide: [`docs/benchmarking.md`](docs/benchmarking.md).
+Source: [`benchmarks/results/2026-07-06-public.md`](benchmarks/results/2026-07-06-public.md). Benchmark guide: [`docs/benchmarking.md`](docs/benchmarking.md).
 
 This is useful but not magic. It says AgentPack often gets meaningful files into a small pack. It does not replace source inspection, tests, runtime evidence, or review. Agent success A/B benchmarks should report task success, tool calls, token cost, validation quality, and time-to-first-correct-file.
 
@@ -157,6 +171,17 @@ E2E outcome proof is tracked separately in [`benchmarks/results/e2e-ab-status.md
 Memory feedback has its own guardrail: compare ranking with memory off/on using
 `agentpack eval --memory-ab`. Timestamped memory can explain or boost context,
 but it is not task-success proof.
+
+## Current Release Snapshot
+
+Current package line: `0.3.39`.
+
+- Public release gate: 107 historical commit cases, 67.2% average recall, and 50.6% token precision.
+- Ranking/runtime: ranked carrier compaction now keeps lower-action support files tighter without dropping the release benchmark below target.
+- Language context: Rust symbol extraction covers free functions, `impl`/`trait` methods, and `struct`/`enum`/`trait` declarations, with the regex-based limits documented in [`docs/limitations.md`](docs/limitations.md).
+- Automation confidence: scoped `mypy` coverage now spans `src/agentpack/analysis/`, and JSON-output smoke tests cover scriptable `route`, `next`, and release-check flows.
+- Guard behavior: generated fallback and repair guidance use global task context unless thread mode is explicit, avoiding stale ambient Codex task state.
+- Plugin distribution: the Codex plugin now uses the README symbol as its `composerIcon`/`logo`, and the packaged plugin scanner path reports `100/A` with zero local findings.
 
 ## New Contributors
 
@@ -241,6 +266,18 @@ See [`docs/integrations.md`](docs/integrations.md) and [`docs/mcp-context-engine
 
 AgentPack can be used through thin plugin and IDE integration layers so agents start with ranked repo context. Codex has a packaged plugin skeleton; Cursor, Windsurf, Copilot, Cline, Kiro, OpenCode, Claude Code, Antigravity, and generic agents use the same local CLI/MCP engine through portable rules, hooks, and native integration stubs.
 
+Canonical directory description:
+
+```text
+AgentPack is a local context engine for AI coding agents: ranked files,
+tests, rules, skills, and compact task context without hosted indexing.
+```
+
+Current public placement includes PyPI, npm, GitHub Releases, GitHub Pages docs,
+and HOL's plugin registry. Next distribution targets are MCP/plugin directories,
+agent-tool awesome lists, and comparison pages that point back to the same
+canonical docs instead of creating separate host-specific claims.
+
 Inside Codex:
 
 ```text
@@ -252,7 +289,8 @@ Inside Codex:
 The Codex plugin calls the local AgentPack engine. Codex setup enables the
 local `agentpack@local` bundle so commands like `@agentpack-review` match the
 installed CLI version. Verify with `agentpack doctor --agent codex` after
-upgrades.
+upgrades. Its packaged marketplace icon is the same checked-in symbol shown at
+the top of this README.
 
 The review flow prepares a local two-stage PR review bundle: preflight metadata,
 a runbook, stage prompts, and branch-scoped understanding/findings JSON files.
@@ -345,7 +383,7 @@ pipx ensurepath
 
 ## Status
 
-Alpha: `0.3.38`.
+Alpha: `0.3.39`.
 
 Works, tested, and used in real sessions. Python and JavaScript/TypeScript have strongest support. APIs may change before 1.0.
 

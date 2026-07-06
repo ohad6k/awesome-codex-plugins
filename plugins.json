@@ -1150,21 +1150,21 @@
       "install_url": "https://raw.githubusercontent.com/aklofas/kicad-happy/HEAD/.codex-plugin/plugin.json"
     },
     {
-      "name": "Kreuzberg",
-      "url": "https://github.com/kreuzberg-dev/plugins",
-      "owner": "kreuzberg-dev",
-      "repo": "plugins",
-      "description": "Local document extraction for 91+ formats with skills for CLI usage, OCR, table extraction, output formats, and a local MCP server.",
-      "category": "Tools & Integrations",
-      "source": "awesome-codex-plugins",
-      "install_url": "https://raw.githubusercontent.com/kreuzberg-dev/plugins/HEAD/plugins/crawlberg/.codex-plugin/plugin.json"
-    },
-    {
       "name": "Kreuzberg Cloud",
       "url": "https://github.com/kreuzberg-dev/plugins",
       "owner": "kreuzberg-dev",
       "repo": "plugins",
       "description": "Managed document extraction for Codex with API-key setup, presigned uploads, job tracking, webhook workflows, and usage guidance.",
+      "category": "Tools & Integrations",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/kreuzberg-dev/plugins/HEAD/plugins/crawlberg/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Kreuzberg",
+      "url": "https://github.com/kreuzberg-dev/plugins",
+      "owner": "kreuzberg-dev",
+      "repo": "plugins",
+      "description": "Local document extraction for 91+ formats with skills for CLI usage, OCR, table extraction, output formats, and a local MCP server.",
       "category": "Tools & Integrations",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/kreuzberg-dev/plugins/HEAD/plugins/crawlberg/.codex-plugin/plugin.json"
@@ -1414,14 +1414,10 @@
       "url": "https://github.com/taisly/agent",
       "owner": "taisly",
       "repo": "agent",
-      "description": "Publish short-form videos to TikTok, Instagram Reels, YouTube Shorts, X, and Facebook from Codex through Taisly.",
+      "description": "Publish short-form videos to TikTok, Instagram Reels, YouTube Shorts, X, and Facebook from Codex with the Taisly MCP server and bundled social media posting skill.",
       "category": "Tools & Integrations",
       "source": "awesome-codex-plugins",
-      "install_url": "https://raw.githubusercontent.com/taisly/agent/HEAD/.codex-plugin/plugin.json",
-      "platform": "codex",
-      "ecosystems": [
-        "codex"
-      ]
+      "install_url": "https://raw.githubusercontent.com/taisly/agent/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "Task Scheduler",
