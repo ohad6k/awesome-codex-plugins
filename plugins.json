@@ -3,7 +3,7 @@
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
   "last_updated": "2026-07-06",
-  "total": 151,
+  "total": 152,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -1488,6 +1488,16 @@
       "category": "Tools & Integrations",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/CarrotGamesStudios/vidseeds-mcp/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "WakeWire",
+      "url": "https://github.com/glenncalleja/wakewire",
+      "owner": "glenncalleja",
+      "repo": "wakewire",
+      "description": "Push events from GitHub, Gmail, Slack, and any signed webhook (Linear, Sentry, ClickUp) straight into your Codex threads as new turns — event-driven triggers instead of polling, with HMAC verification, deduplication, and a durable delivery queue.",
+      "category": "Tools & Integrations",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/glenncalleja/wakewire/HEAD/plugin/.codex-plugin/plugin.json"
     },
     {
       "name": "X Twitter Scraper",

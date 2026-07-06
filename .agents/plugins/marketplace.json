@@ -2184,6 +2184,20 @@
       "icon": "./plugins/CarrotGamesStudios/vidseeds-mcp/assets/icon.png"
     },
     {
+      "name": "wakewire",
+      "displayName": "WakeWire",
+      "source": {
+        "source": "local",
+        "path": "./plugins/glenncalleja/wakewire"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Push events from GitHub, Gmail, Slack, and any signed webhook (Linear, Sentry, ClickUp) straight into your Codex threads as new turns — event-driven triggers instead of polling, with HMAC verification, deduplication, and a durable delivery queue."
+    },
+    {
       "name": "x-twitter-scraper",
       "displayName": "X Twitter Scraper",
       "source": {
