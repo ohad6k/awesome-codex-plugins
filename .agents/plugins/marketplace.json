@@ -375,7 +375,7 @@
       "icon": "./plugins/alirezarezvani/claude-skills/assets/icon.png"
     },
     {
-      "name": "claude-octopus",
+      "name": "octo",
       "displayName": "Claude Octopus",
       "source": {
         "source": "local",
@@ -1758,6 +1758,21 @@
       "category": "Tools & Integrations",
       "description": "Official Launch Fast plugin adapter for rapid SaaS deployment.",
       "icon": "./plugins/BlockchainHB/launchfast_codex_plugin/assets/icon.png"
+    },
+    {
+      "name": "linkedin-skills",
+      "displayName": "LinkedIn Skills",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sergebulaev/linkedin-skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools & Integrations",
+      "description": "Codex-ready LinkedIn marketing bundle with a native .codex-plugin manifest and 10 skills: post writing with 16 tested hook formulas, AI-tell humanizer, pre-publish audit, comment and reply drafting, hook extraction, content planning, profile optimization, engager analytics, and thread monitoring; also works in Claude Code.",
+      "icon": "./plugins/sergebulaev/linkedin-skills/assets/icon.svg"
     },
     {
       "name": "costguard",
