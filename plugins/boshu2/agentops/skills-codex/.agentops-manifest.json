@@ -1276,7 +1276,7 @@
       "name": "standards",
       "source_skill": "skills/standards",
       "source_hash": "7da2905e2b31681a9e826100f57d65ac9441860e470763da36339066a39f7718",
-      "generated_hash": "267cde5f1d58a4d494c40d070a46a38c0b31857eecf0505b4c64c0ba6c8e7149"
+      "generated_hash": "9923041fdca13deb7832ee728c510d47dc03493a29c2b58afcd501735ec2e3fb"
     },
     {
       "name": "status",
@@ -1329,8 +1329,8 @@
     {
       "name": "gc-membrane",
       "source_skill": "skills/gc-membrane",
-      "source_hash": "84799ffcf06ccb6d16d7b3b62a65148b2e97412cb2f38ebe39a86da7c2b48199",
-      "generated_hash": "79329bbdd9e569602eafbb721578cfcb8c2109582b5cc92a1c17ba2496491fee"
+      "source_hash": "353a1af703627d4bb8acfecfb9826bf284891637a3a96e9f256b397bb78745c6",
+      "generated_hash": "38fd226414af458c4ef4e90842bdf557dd26ac55354ef5b8930d38c2cc8b569c"
     },
     {
       "name": "using-gc",
