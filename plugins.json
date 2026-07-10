@@ -3,7 +3,7 @@
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
   "last_updated": "2026-07-10",
-  "total": 161,
+  "total": 162,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -538,6 +538,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/sarveshsea/memi/HEAD/plugins/memoire/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Open Dynamic Workflows",
+      "url": "https://github.com/Suraj1235/open-dynamic-workflows",
+      "owner": "Suraj1235",
+      "repo": "open-dynamic-workflows",
+      "description": "Local-first MIT dynamic multi-agent workflows for Codex, OpenCode, Antigravity, Cursor, and VS Code with a daemon, MCP bridge, Codex skills, OpenCode plugin, and bring-your-own-model support.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/Suraj1235/open-dynamic-workflows/HEAD/packages/codex-adapter/.codex-plugin/plugin.json"
     },
     {
       "name": "Personal Data Protection",

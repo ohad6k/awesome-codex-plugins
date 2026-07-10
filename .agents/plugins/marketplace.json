@@ -788,6 +788,21 @@
       "description": "Interface understanding and design-system memory for Codex, Claude Code, Cursor, and MCP agents with UI audits, Tailwind token extraction, shadcn registry workflows, and a bundled Codex plugin."
     },
     {
+      "name": "odw",
+      "displayName": "Open Dynamic Workflows",
+      "source": {
+        "source": "local",
+        "path": "./plugins/Suraj1235/open-dynamic-workflows"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Local-first MIT dynamic multi-agent workflows for Codex, OpenCode, Antigravity, Cursor, and VS Code with a daemon, MCP bridge, Codex skills, OpenCode plugin, and bring-your-own-model support.",
+      "icon": "./plugins/Suraj1235/open-dynamic-workflows/assets/icon.svg"
+    },
+    {
       "name": "personal-data-protection",
       "displayName": "Personal Data Protection",
       "source": {
