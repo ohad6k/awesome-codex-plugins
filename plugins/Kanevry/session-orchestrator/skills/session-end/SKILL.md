@@ -171,11 +171,13 @@ const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 // For each SPIRAL/FAILED agent from the Wave History walk:
 await appendWhatNotToRetryOnDisk(repoRoot, {
   approach: '<agent task description from Wave History>',
-  why_failed: '<SPIRAL|FAILED> — <one-line context from Deviations / error>',
+  why_failed: '<SPIRAL|FAILED> — <one-line context> (evidence: <file:line or path>)',
   session_id: sessionId,
   date: today,
 });
 ```
+
+`why_failed` MUST cite at least one concrete file (and line, if applicable) that grounds the failure — a bare narrative reason without a file reference is not acceptable.
 
 The helper is lock-guarded (PSA-005) and prunes the section FIFO to the 10 most-recent entries on each append. **Optional coordinator entry:** if the session abandoned an approach for reasons NOT captured by a SPIRAL/FAILED agent (e.g. a design that proved unworkable mid-session), the coordinator MAY add a free-text entry through the SAME `appendWhatNotToRetryOnDisk` helper with a descriptive `approach` + `why_failed`. Recording is informational and does NOT block the close.
 
@@ -195,6 +197,15 @@ Skip the gate entirely — treat EVERY candidate as carry (byte-identical to the
 - The candidate list is empty AND STATE.md `## Open Questions` has no unanswered entry — **Zero-Friction clean close**: emit NO AUQ and continue unchanged.
 
 Fail-open NEVER hangs the close on an unanswerable AUQ and NEVER loses data — it degrades exactly to today's silent-carryover behavior. Log e.g. `⚠ handover-gate: skipped (<reason>) — all candidates carry (status quo)`.
+
+**Telemetry on skip (#773):** even when the gate is skipped, emit the `orchestrator.handover.gated` event ONCE with `path: "fail_open"` so this never-interactive path is still measurable (the carryover=0 blind spot #773 closed was invisible precisely because skipped closes emitted nothing). Every candidate carries, so `auto_carry = candidates_total`, `asked = 0`, `dropped = 0`, and the three question counts are `0`:
+
+```bash
+node scripts/emit-event.mjs --type orchestrator.handover.gated --payload \
+  "$(node -e "process.stdout.write(JSON.stringify({candidates_total: CT, auto_carry: CT, asked: 0, dropped: 0, questions_asked: 0, questions_answered: 0, questions_deferred: 0, path: 'fail_open'}))")"
+```
+
+(`CT` = the in-memory candidate-list length. The Zero-Friction clean-close variant — empty candidates AND no open questions — emits with all counts `0` and `path: "fail_open"` too, so even the quietest close leaves a breadcrumb.)
 
 #### Step 1 — Assemble candidates + open questions
 
@@ -225,7 +236,14 @@ Render ONE `AskUserQuestion`. The question text NAMES the candidate counts by cl
 
 - **"Closen + Triage (Recommended)"** — proceed to AUQ Call 2 (triage the middle-band + answer the top open questions), then file the resulting carry-list in Phase 5 Step 3.
 - **"Alle carryoven (ohne Triage)"** — fast-path: carry ALL candidates (`autoCarry ∪ ask`) with no triage; SKIP AUQ Call 2; unanswered questions stay `- [ ]` and roundtrip to the next session. Equivalent to the status quo for filing, minus the friction.
-- **"Weiterarbeiten (Close abbrechen)"** — abort session-end cleanly: NO commit, NO lock-release, NO issue creation; STATE.md stays `status: active`; the session remains open and the coordinator continues working the open points. Print `session-end aborted at Phase 1.65 by user choice (Weiterarbeiten). Session stays open.` and STOP the close (do not fall through to Phase 1.7).
+- **"Weiterarbeiten (Close abbrechen)"** — abort session-end cleanly: NO commit, NO lock-release, NO issue creation; STATE.md stays `status: active`; the session remains open and the coordinator continues working the open points. **Before stopping, emit `orchestrator.handover.gated` ONCE with `path: "weiterarbeiten"` (#773)** — the gate WAS rendered (AUQ Call 1 happened) and the operator chose to keep working, which is a distinct, previously-unmeasured outcome. Nothing is filed, so report `auto_carry = autoCarry.length`, `asked = ask.length`, `dropped = 0`, and all three question counts `0`:
+
+  ```bash
+  node scripts/emit-event.mjs --type orchestrator.handover.gated --payload \
+    "$(node -e "process.stdout.write(JSON.stringify({candidates_total: CT, auto_carry: AC, asked: ASK, dropped: 0, questions_asked: 0, questions_answered: 0, questions_deferred: 0, path: 'weiterarbeiten'}))")"
+  ```
+
+  Then print `session-end aborted at Phase 1.65 by user choice (Weiterarbeiten). Session stays open.` and STOP the close (do not fall through to Phase 1.7).
 
 (Codex CLI / Cursor IDE: same three options as a numbered Markdown list.)
 
@@ -258,6 +276,24 @@ Combine the Middle-Band triage multiSelect AND up to `max-open-questions` open-q
 
 3. The gate's carry/drop split feeds the Phase 1.7 carryover count.
 
+#### Step 5 — Emit gate telemetry (#773)
+
+After the carry/drop split is settled, emit `orchestrator.handover.gated` **exactly once** for the interactive path taken. This is the mechanical producer that makes the gate observable — before #773 the gate decided carry/drop entirely in coordinator prose, so `effectiveness.carryover` had no mechanical anchor and 41/41 records read `carryover: 0` despite real filtering. Derive the payload from the in-memory gate state:
+
+- `candidates_total` = `autoCarry.length + ask.length`
+- `auto_carry` = `autoCarry.length` (non-deselectable)
+- `asked` = `ask.length` (middle-band candidates surfaced for triage)
+- `dropped` = drop-list length (middle-band items the operator DESELECTED; `0` on the `"Alle carryoven"` fast-path since AUQ Call 2 is skipped)
+- `questions_asked` / `questions_answered` / `questions_deferred` = the open-question counts from AUQ Call 2 (surfaced / answered / left `- [ ]` and roundtripped). All `0` on the fast-path.
+- `path` = `"triage"` (after "Closen + Triage") or `"fast_path"` (after "Alle carryoven ohne Triage")
+
+```bash
+node scripts/emit-event.mjs --type orchestrator.handover.gated --payload \
+  "$(node -e "process.stdout.write(JSON.stringify({candidates_total: CT, auto_carry: AC, asked: ASK, dropped: DROP, questions_asked: QA, questions_answered: QAN, questions_deferred: QD, path: PATH}))")"
+```
+
+The `questions_asked / questions_answered / questions_deferred` values here are the SAME three counts recorded as the top-level `open_questions_asked / open_questions_answered / open_questions_deferred` session fields in Phase 1.7 (see `metrics-collection.md`). Emit the event with the exact `scripts/emit-event.mjs --type … --payload …` flag signature (NOT a positional argument — see the CLI header).
+
 ### 1.7 Metrics Collection
 
 Read `skills/session-end/metrics-collection.md` for JSONL schema and conditional field rules.
@@ -281,6 +317,12 @@ Dispatch the session-reviewer agent to verify implementation quality before the 
      | MED / LOW review finding | Fold in-session if quick; else record under "Unresolved Review Findings" in the Final Report — DO NOT create an issue (#617) |
      | Planned-carryover (item was in the plan, not finished) | Route as a carryover **candidate** per Phase 1.2 → the Phase 1.65 gate files it. Never forgotten: a no-origin/critical/high item auto-carries as a `[Carryover]` issue; a middle-band item with an origin issue is preselected=carry (and its origin issue stays open even if dropped). |
      | SPIRAL / FAILED agent carryover | Route as an **auto-carry** candidate per Phase 1.6 → filed via `createSpiralCarryoverIssue` in Phase 5 Step 3 (non-deselectable) |
+
+**Override-ratio telemetry (#730/H5):** whenever one or more MED/LOW review findings are routed to "Unresolved Review Findings" (rather than fixed), additionally emit a single event capturing how many findings were absorbed rather than resolved — feeding the `override_ratio` metric:
+
+```bash
+node scripts/emit-event.mjs --type orchestrator.finding.overridden --payload '{"phase":"1.8","kind":"med-low-review-finding","count":N}'
+```
 
 ### 1.9 Mission-Status Classification (when `mission-status` present in STATE.md)
 
@@ -400,6 +442,7 @@ totalFindings = projectStaleness.findings.length + narrativeStaleness.findings.l
          `- [<ISO timestamp>] Phase 2.3: Vault staleness strict-mode findings carried over. Findings: <count> (projects: <N>, narratives: <M>) → issue #<IID>.`
       2. "Override and close" — proceed without a carryover issue, log a Deviation entry in STATE.md `## Deviations`:
          `- [<ISO timestamp>] Phase 2.3: Vault staleness strict-mode findings overridden by user. Findings: <count> (projects: <N>, narratives: <M>).`
+         In addition to the Deviation entry, emit an override-ratio event so the override feeds the `override_ratio` metric (#730/H5): `node scripts/emit-event.mjs --type orchestrator.finding.overridden --payload '{"phase":"2.3","kind":"vault-staleness-strict","count":N}'`.
     - On Codex CLI / Cursor IDE: same options as numbered Markdown list.
 
 #### Step 4 — Surface to closing report
@@ -440,6 +483,7 @@ For each kept phase:
       2. "Warn + carryover and close" — file a carryover issue (labels `carryover`, `priority:high`) titled `[Carryover] custom-phase '<name>' (mode=hard) exited <code>` capturing the phase name + captured summary for a follow-up session, log the Deviation entry, then continue the close.
       3. "Override and close" — proceed, log a Deviation entry in STATE.md `## Deviations`:
          `- [<ISO timestamp>] Phase 2.5: custom-phase '<name>' (mode=hard) exited <code>, overridden by user.`
+         In addition to the Deviation entry, emit an override-ratio event so the override feeds the `override_ratio` metric (#730/H5): `node scripts/emit-event.mjs --type orchestrator.finding.overridden --payload '{"phase":"2.5","kind":"custom-phase-hard","count":N}'`.
       4. "Abort close" — exit close without writing.
     - On Codex CLI / Cursor IDE: same options as a numbered Markdown list.
 
@@ -448,6 +492,36 @@ A `hard`-fail (whether overridden or not) ALWAYS appends its result line to STAT
 #### Step 4 — Surface to closing report
 
 Pass each phase result `(name, mode, exitCode, summary, review?)` forward to the Phase 6 Final Report "Custom Phases" line (see Phase 6 below).
+
+## Phase 2.6: Broken-Window Budget (#730/H5)
+
+> Opt-in via `broken-window-budget.enabled` in Session Config (default `false`).
+> Skip silently when disabled.
+
+Assemble the in-memory "knowingly-broken shipment" list from THIS session's
+already-computed results — no new detection logic, only aggregation:
+
+1. Phase 2.0a stub findings (`result.stubbed`) that shipped anyway under `enforcement: warn`.
+2. Phase 2.3 / 2.5 "Override and close" choices (reuse each entry's Deviation-log payload verbatim).
+3. Phase 1.8 MED/LOW findings routed to "Unresolved Review Findings" (#617).
+4. Wave-level reviewer findings overridden without a fix task (`## Deviations` entries matching `reviewer finding overridden` — written by wave-executor §5/5a).
+
+For EACH item: file a hard-terminated closure issue via `createBrokenWindowIssue()`
+from `scripts/lib/spiral-carryover.mjs` — labels `broken-window` + `priority:high`,
+due-date = today + `broken-window-budget.due-days` (default 7; `glab` native
+`--due-date`, `gh` fallback: `Due: <date>` as first body line — GitHub has no
+native due-date field). Idempotent per task-hash — re-running a close never
+duplicates issues.
+
+Emit ONE event per filed issue (note: event-name segments use underscores, never hyphens):
+
+```bash
+node scripts/emit-event.mjs --type orchestrator.broken_window.filed --payload \
+  "$(node -e "process.stdout.write(JSON.stringify({source:'<2.0a|2.3|2.5|1.8|wave-override>', issue:<IID>, due:'<YYYY-MM-DD>'}))")"
+```
+
+Non-blocking: a filing failure is a WARN, never blocks the close (same fail-open
+discipline as `createSpiralCarryoverIssue`).
 
 ## Phase 3: Documentation Updates
 

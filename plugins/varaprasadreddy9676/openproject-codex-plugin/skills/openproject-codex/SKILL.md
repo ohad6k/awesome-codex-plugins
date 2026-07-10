@@ -16,7 +16,10 @@ The plugin is intended to cover common project-management actions directly and t
 - Use `openproject_connection_status` first if credentials or connectivity are uncertain.
 - If configuration is missing, use `openproject_setup_connection` to capture the base URL and API token directly from chat before attempting other actions.
 - Use `openproject_test_connection` or `openproject_whoami` after setup when you need a quick verification step.
+- API token authentication is preferred, but UI-session authentication is supported when `OPENPROJECT_UI_USERNAME` and `OPENPROJECT_UI_PASSWORD` are configured.
 - Use `openproject_list_types`, `openproject_list_statuses`, `openproject_list_priorities`, and `openproject_list_project_assignees` before write operations when a value needs to be discovered.
+- Use `assignee_name`, `responsible_name`, `status_name`, `priority_name`, and `customer` on `openproject_create_work_package` and `openproject_update_work_package` when the user provides human-readable values.
+- Use `openproject_list_custom_field_options` or `openproject_resolve_custom_field_option` for Customer or other list-style custom fields instead of using the browser UI.
 - Use dedicated tools first for projects, users, groups, memberships, versions, categories, queries, work packages, relations, watchers, comments, documents, news, time entries, attachments, file links, boards, wiki pages, meetings, reporting, and bulk task operations.
 - Prefer `openproject_my_work` for “my items” or “items assigned to me” requests.
 - Prefer the query tools when the user refers to saved views or wants bulk actions across a query result set.
@@ -34,7 +37,7 @@ The plugin is intended to cover common project-management actions directly and t
 - `OPENPROJECT_BASIC_API_TOKEN_FILE` is supported for the same legacy Basic-auth fallback.
 - `OPENPROJECT_BASE_URL` is required.
 - `OPENPROJECT_DEFAULT_PROJECT` is optional.
-- `OPENPROJECT_UI_USERNAME` and `OPENPROJECT_UI_PASSWORD` are required for the boards/wiki/meetings UI-backed tools.
+- `OPENPROJECT_UI_USERNAME` and `OPENPROJECT_UI_PASSWORD` are required for UI-session API fallback and the boards/wiki/meetings UI-backed tools.
 
 The plugin can now persist this configuration locally through `openproject_setup_connection`, so the user does not have to edit `.mcp.json` manually on first use.
 

@@ -197,7 +197,7 @@
       "icon": "./plugins/biefan/anchor/assets/icon.svg"
     },
     {
-      "name": "antigravity",
+      "name": "repobrain",
       "displayName": "Antigravity Workspace Template",
       "source": {
         "source": "local",
@@ -534,6 +534,21 @@
       "category": "Development & Workflow",
       "description": "Three-tier triage (PASS_THROUGH / LIGHT / FULL 4-phase) development workflow for Codex and Claude Code with language auto-detection (Python, Java, TypeScript, Swift, frontend) and a staff-reviewer subagent for fresh-eyes review on every change.",
       "icon": "./plugins/reidemeister94/development-skills/assets/icon.svg"
+    },
+    {
+      "name": "docflow",
+      "displayName": "Docflow",
+      "source": {
+        "source": "local",
+        "path": "./plugins/MedAdemBHA/docflow"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Lightweight documentation memory for AI coding agents that scaffolds a 7-category docs tree, runs readiness checks, validates docs before finishing, and keeps a monthly changelog across Claude Code and Codex.",
+      "icon": "./plugins/MedAdemBHA/docflow/assets/icon.svg"
     },
     {
       "name": "ejentum",
@@ -951,6 +966,21 @@
       "icon": "./plugins/Habib0x0/spec-driven-plugin/assets/spec-driven-icon.svg"
     },
     {
+      "name": "spec-superflow",
+      "displayName": "spec-superflow",
+      "source": {
+        "source": "local",
+        "path": "./plugins/MageByte-Zero/spec-superflow"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Spec-first workflow that bridges OpenSpec-style planning and Superpowers-style execution discipline with nine skills and guarded execution contracts.",
+      "icon": "./plugins/MageByte-Zero/spec-superflow/assets/icon.svg"
+    },
+    {
       "name": "spellbook-skills",
       "displayName": "Spellbook Skills",
       "source": {
@@ -1110,6 +1140,21 @@
       "category": "Development & Workflow",
       "description": "Local-first memory lifecycle guidance for Codex agents with recall, evidence-backed lessons, privacy-safe memory capture, audit, consolidation, and explicit forgetting.",
       "icon": "./plugins/TerminallyLazy/tree-ring-memory-codex-plugin/assets/icon.svg"
+    },
+    {
+      "name": "unforgit",
+      "displayName": "Unforgit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/MiguelMedeiros/unforgit-codex-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Git-backed repository memory for Codex and other coding agents via MCP, with durable local knowledge for decisions, conventions, gotchas, and playbooks.",
+      "icon": "./plugins/MiguelMedeiros/unforgit-codex-plugin/assets/icon.png"
     },
     {
       "name": "unity-agent-workflows",

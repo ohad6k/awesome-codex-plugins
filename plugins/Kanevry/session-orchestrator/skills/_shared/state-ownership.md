@@ -49,8 +49,10 @@ A log of failed or abandoned approaches that future sessions should NOT re-attem
 ## What Not To Retry
 
 - **<approach>** (<session_id>, <date>)
-  - why: <why_failed>
+  - why: <SPIRAL|FAILED> — <one-line context> (evidence: <file:line or path>)
 ```
+
+`why_failed` MUST cite at least one concrete file (and line, if applicable) that grounds the failure — a bare narrative reason without a file reference is not acceptable.
 
 - **Writer:** session-end Phase 1.6 — for every SPIRAL/FAILED agent it appends one entry via `appendWhatNotToRetryOnDisk(repoRoot, entry)`; the coordinator MAY also add a free-text entry through the same helper.
 - **Reader:** session-start Phase 6.5.1 — surfaces the section as a forced-read block wrapped in the HISTORICAL guard banner (`scripts/lib/historical-guard.mjs`). It is a READER only and never mutates the slot.
@@ -77,6 +79,26 @@ A log of unresolved, user-facing questions surfaced by wave agents during a sess
 
 Helpers: `readOpenQuestions` (pure), `appendOpenQuestion` (pure), `markOpenQuestionAnswered` (pure), `appendOpenQuestionOnDisk` (lock-guarded write), `markOpenQuestionAnsweredOnDisk` (lock-guarded write) — all exported from `scripts/lib/state-md.mjs`.
 
+## CCU-009 — Status = Index, Never History (#730/H6)
+
+> Adopted from an external-repo fleet-mining finding (2026-07-02): narrative
+> status content accreting into a project's primary instruction file, never
+> routed to a durable history channel.
+
+**The convention:** any status-bearing document — STATE.md, a CLAUDE.md
+"Current State" section, a dashboard file — MUST hold only the CURRENT
+(and optionally the immediately-PRIOR) state, never an append-only narrative
+log. This is not new here: `## Wave History` demotion to `## Previous Session`
+on Idle-Reset, the preserved single-slot `## What Not To Retry`, and session
+memory files already implement the split — CCU-009 is the explicit NAME of
+the pattern so it can be checked for, not just followed by convention.
+
+**Where narrative belongs instead (durable-history channels):**
+`.orchestrator/metrics/sessions.jsonl` (per-session record), session memory
+(`~/.claude/projects/<project>/memory/`), and vault-mirror `50-sessions/`
+notes. A CLAUDE.md "Current State" or STATE.md free-text block that keeps
+growing across sessions is the CCU-009 anti-pattern.
+
 ## Ownership Model
 
 | Skill | Access | Operations |
@@ -85,6 +107,15 @@ Helpers: `readOpenQuestions` (pure), `appendOpenQuestion` (pure), `markOpenQuest
 | **session-end** | Read + Status-only write | Reads for metrics extraction (Phase 1.7), sets `status: completed` (Phase 3.4). Exception: only fields modified are `status` in frontmatter and marking entries answered in `## Open Questions` via `markOpenQuestionAnsweredOnDisk` (Close Handover-Alignment-Gate). |
 | **session-start** | Read + conditional reset | Reads for continuity checks (Phase 1.5): inspects `status` field to detect crashed/paused sessions. Surfaces `## What Not To Retry` as a forced-read HISTORICAL block (Phase 6.5.1). May reset STATE.md to idle at the boundary between a completed session and a new session — only when prior `status: completed`. The reset clears `current-wave` (→ 0), sets `status: idle`, demotes `## Wave History` into `## Previous Session`, and empties `## Deviations` — but PRESERVES `## What Not To Retry` (cross-session continuity, #623) and `## Open Questions` (Close Handover-Alignment-Gate, PRD 2026-07-07). Never resets on `active` or `paused` (those paths are user-interactive). |
 | **evolve** | Read-only | Reads `## Deviations` section for deviation pattern extraction (Step 2.2, pattern 5) |
+
+### Shared-File Single-Writer Rule (`isolation: none` waves)
+
+The Ownership Model above resolves *STATE.md* specifically, but the same discipline generalizes to any file more than one dispatched agent could plausibly need to touch inside a single `isolation: none` wave (STATE.md, CLAUDE.md / AGENTS.md — the Codex CLI alias, central Session Config, other cross-cutting configs). Such a file MUST NEVER be given two writers in the same wave — the wave plan picks exactly one of:
+
+- **Designated single-writer agent** — one agent in the wave owns the file in its declared file-scope; every other agent that would otherwise touch it is scoped away from it and reports its intended change (if any) back to the coordinator instead of editing directly.
+- **Coordinator-direct defer** — no agent in the wave touches the file at all; the coordinator applies the accumulated edits itself at the inter-wave checkpoint, after all agents report.
+
+This is the wave-plan-time analog of PSA-007 (subagents never race the shared git index) applied one layer up, to shared *files* rather than the git index — see [`../../.claude/rules/parallel-sessions.md`](../../.claude/rules/parallel-sessions.md) § PSA-007.
 
 ## Guards
 

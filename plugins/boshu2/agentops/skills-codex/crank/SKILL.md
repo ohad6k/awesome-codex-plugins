@@ -8,6 +8,8 @@ description: "Execute implementation waves."
 
 **You must execute this workflow. Do not just describe it.**
 
+Each slice runs the canonical narrow-waist micro-cycle: its acceptance test authored RED before code is the slice contract, and refactor-under-green is its own wave, never optional (see references/wave-patterns.md) — a refactor wave must change no test (test-first ordering alone is not the quality lever; refactor-after-green is).
+
 ## Architecture
 
 ```text
@@ -479,6 +481,8 @@ THIS repo lands by **direct push to main** — PR-per-bead is retired (external-
 2. **Review:** `REVIEWER=agy bash scripts/pawl-review.sh <bead> --scope head --author-family codex` — the cross-family refuter against the commit. Codex-runtime authors need BOTH halves: `--author-family codex` (default is `claude`; omitting it silently permits a same-family codex bind) AND a non-codex `REVIEWER` (the default reviewer IS codex, which the declared family then excludes — without the override the script exits 2). **CONFIRMED (exit 0) writes the commit-bound verdict the pre-push gate requires; no CONFIRMED verdict ⇒ the bead does NOT land** (no verdict = not done). **REFUTED (exit 3) -> AUTO-REDO** the named defects and re-gate; escalate to a human only on a circuit-breaker trip (max-attempts / time / cost / oscillation), door stays closed.
 3. **Land:** `bash scripts/pawl-land.sh <bead>` — fetch + rebase onto `origin/main`, restamp the verdict onto the post-rebase feat, single-shot push.
 4. **Close on landed-only:** `ao beads exec close` a child bead ONLY after its commit is an ancestor of `origin/main` (`git fetch origin main && git merge-base --is-ancestor <feat-sha> origin/main`), never on a log line or batch `br --json` query. Never close a parent epic before EVERY child is landed (`scripts/check-epic-children-closed.sh <epic>`).
+
+**Close checkpoint — a closed bead is a sensor reading, not a checkbox (age-cysr).** The close is the loop's highest-signal, membrane-verified evidence ([the flywheel](../../docs/architecture/the-flywheel.md)). On EVERY close answer two questions before moving on: (1) what did completing this bead teach? (one line — usually "nothing new", and that's fine); (2) does it CONTRADICT an assumption the remaining plan depends on? If **no** → proceed to the next bead. If **yes** (a falsified plan assumption) → re-plan the remaining slices NOW, not at the wave boundary: invoke `$discovery` as the re-plan engine over the remaining DAG (split / re-order / add / drop beads) and record the trigger in the close reason (`replan: <falsified assumption>`). **Anti-thrash guard:** the trigger is a falsified plan assumption ONLY — most closes teach nothing; never re-plan on mere surprise, difficulty, or a new idea (park those for `$post-mortem`). **Andon bound:** a re-plan that would rework the same remaining DAG a 3rd time escalates to the human instead of re-planning again.
 
 **Multi-lane serialization + by-hand land.** When several lanes land onto a hot `main` at once, or when you land by hand via the `ao pawl review` CLI (which sets `PAWL_UNTRUSTED_REPO=1` and SKIPS auto-bind, so the sealed bind is manual), follow the serialized land-token discipline + the exact `[feat, #trivial-bind]` command sequence in [references/land-protocol.md](references/land-protocol.md) — one land at a time across lanes, `ao provenance emit-verdict` for the sealed bind (never a hand-appended ledger edge), and `git merge-base --is-ancestor` before every `ao beads exec close`.
 

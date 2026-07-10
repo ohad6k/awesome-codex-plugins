@@ -1,7 +1,7 @@
 # Session Orchestrator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.11.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.12.0-blue.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-10%2C000%2B-brightgreen.svg)](docs/telemetry/telemetry-claims.md)
 
 Turn ad-hoc agent sessions into a repeatable loop with verification gates — loop engineering for software work. You design the loop (`research → plan → execute in waves → close`); Session Orchestrator runs it on top of your existing agent, with the guards, telemetry, and cross-session memory that keep a long agent run honest. Inter-wave reviews catch regressions before they ship; carryover issues mean loose ends get tracked, not lost.
@@ -72,8 +72,8 @@ Everything else is opt-in. See [`docs/session-config-template.md`](docs/session-
 
 ## What you get
 
-- **42 skills** for the session lifecycle (start, plan, execute, close, evolve), discovery, vault sync, MCP authoring, debugging, brainstorming, plan grilling, persona panels, cross-repo dispatch, learning→rule reconciliation, audits, and more
-- **22 slash commands** (`/session`, `/go`, `/close`, `/discovery`, `/plan`, `/grill`, `/evolve`, `/autopilot`, `/dispatcher`, `/reconcile`, `/test`, `/debug`, …)
+- **43 skills** for the session lifecycle (start, plan, execute, close, evolve), discovery, vault sync, MCP authoring, debugging, brainstorming, plan grilling, persona panels, cross-repo dispatch, learning→rule reconciliation, audits, and more
+- **23 slash commands** (`/session`, `/go`, `/close`, `/discovery`, `/plan`, `/grill`, `/evolve`, `/autopilot`, `/dispatcher`, `/reconcile`, `/test`, `/debug`, …)
 - **14 typed subagents** (code-implementer, test-writer, security-reviewer, session-reviewer, qa-strategist, architect-reviewer, …)
 - **10 hook event types** enforcing scope, blocking destructive commands, gating templates-first, capturing telemetry — full on Claude Code; experimental, post-hoc, or bridged on the other platforms ([Platform support](#platform-support))
 - **10,000+ vitest tests** run on every commit ([telemetry methodology](docs/telemetry/telemetry-claims.md))
@@ -133,17 +133,17 @@ The system is markdown-driven config plus a thin Node runtime — skills, comman
 - **Cross-session learning is opt-in and inspectable.** Every session writes a record; after 5+ sessions `/evolve analyze` extracts confidence-scored patterns you can read and prune. Nothing is hidden.
 - **VCS dual support, no lock-in.** Auto-detects GitLab or GitHub from your remote and drives the full lifecycle for both.
 
-## Recent highlights (v3.11.0)
+## Recent highlights (v3.12.0)
 
-Every release is additive and backward-compatible. Highlights of the v3.11.0 line:
+Every release is additive and backward-compatible. Highlights of the v3.12.0 line:
 
-- **Self-healing session ledger** — a crashed session no longer leaves an orphaned lock or a hole in the session history: the SessionEnd hook backfills an `abandoned` ledger entry and releases the session lock deterministically, and a host-wide reaper (dry-run by default) cleans up whatever is left.
-- **Learning-store safety** — every learning rewrite snapshots a backup first and can be validated without writing; dialect normalization and a mechanical expiry sweep keep the cross-session learning store readable and lean instead of silently rotting.
-- **Vault mirroring hardened** — readable note slugs, per-record crash resilience, zero dangling wiki-links, and a host-local pseudonym map so private repo names never reach shared notes.
-- **Hardened CI** — the GitHub mirror can no longer report a silent green (fail-closed test verifier on every run), the CI toolchain is pinned with checksums, and a package-manager guard catches lockfile/store drift before it corrupts a run.
-- **Leaner instruction surface** — tier-aware rule loading lets wave agents skip coordinator-only rules, and instruction-surface trims cut the always-on directive budget by ~8%.
+- **Gated session handover** — `/close` collects carryover candidates and routes them through an operator-triaged alignment gate instead of filing them scattered across phases; a new `## Open Questions` STATE.md channel carries a wave agent's unresolved questions across the session boundary, surfaced as a forced-read at the next session-start.
+- **Fail-loud wave dispatch** — small-batch `Agent()` dispatch by default (large fan-outs drop calls silently), planned-vs-started dispatch verification with re-dispatch, and git-diff edit-persistence evidence before any agent's `done` is accepted.
+- **Curated public docs** — 68 process records moved to the operator's private vault behind a sensitivity gate; three permanent guards (docs-parity drift check, docs-staleness probe, epic-close PRD archive routine) keep the public tree user-facing.
+- **Session-lock reliability** — heartbeat-first liveness ends the live-session-hijack incident class, a lock reaper sweeps orphaned registry claims, and STATE.md writes are size-guarded.
+- **Portable hooks** — all hook commands route through a node-resolver shim, fixing per-tool-call failures on nvm/volta/asdf/Homebrew setups where hook shells never source `~/.zshrc`.
 
-Previous line (v3.10.0): cross-repo `/dispatcher`, learning → rule `/reconcile`, opt-in skill self-evolution, named multi-vault routing, instruction-budget guard.
+Previous line (v3.11.0): self-healing session ledger, learning-store backup + expiry sweep, hardened CI mirror, tier-aware rule loading.
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).
 
@@ -166,7 +166,7 @@ The design goal is engineering quality: every wave exits verified, every unfinis
 
 | Feature | Claude Code | Codex CLI | Cursor IDE | Pi |
 |---|---|---|---|---|
-| All 22 commands | Native slash commands | Native plugin commands | Rules-based (.mdc) | Prompt templates |
+| All 23 commands | Native slash commands | Native plugin commands | Rules-based (.mdc) | Prompt templates |
 | Parallel agents | Agent tool | Multi-agent roles | Sequential only | Sequential (parallel planned) |
 | Session persistence | `.claude/STATE.md` | `.codex/STATE.md` | `.cursor/STATE.md` | `.pi/STATE.md` |
 | Scope enforcement | PreToolUse hooks | Hooks (experimental) | `afterFileEdit` (post-hoc) | `tool_call` bridge |
