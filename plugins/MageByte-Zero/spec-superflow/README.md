@@ -147,7 +147,7 @@ npx spec-superflow list          # 或通过 npx 使用
 
 ### 版本
 
-- 当前版本：`v0.8.17`
+- 当前版本：`v0.9.0`
 - 自包含插件，不需要运行时安装 OpenSpec 或 Superpowers
 - 上游来源：[Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec) 和 [obra/superpowers](https://github.com/obra/superpowers)
 - 版本历史见 [CHANGELOG.md](CHANGELOG.md)
@@ -253,6 +253,38 @@ Delta spec 的规范路径是 `specs/<capability>/spec.md`；扁平的 `specs/<c
 
 - **hotfix** — ≤2 文件、无新模块时，走 `exploring -> bridging -> approved-for-build -> executing`。可跳过 `proposal.md`、`design.md`、`tasks.md`、`specs/` 等完整规划工件，但仍必须先生成一份新的最小 `execution-contract.md`，并完成 DP-3 批准后才能进入实现
 - **tweak** — ≤4 文件、纯配置/文档修改时，跳过规划+桥接，直接编辑
+
+---
+
+## 模型 Profile（可选配置）
+
+可以在项目根目录的 `spec-superflow.config.json` 中，为不同执行角色配置平台模型 ID：
+
+```json
+{
+  "models": {
+    "mechanical": "vendor-small",
+    "standard": "vendor-standard",
+    "strong": "vendor-strong",
+    "review": "vendor-review"
+  }
+}
+```
+
+| Profile | 角色 |
+|---|---|
+| `mechanical` | 低成本、机械性修改 |
+| `standard` | 集成与判断任务 |
+| `strong` | 架构、设计与最终审查 |
+| `review` | 与 diff 匹配的代码审查 |
+
+使用以下命令只读解析一个 profile：
+
+```bash
+ssf config --resolve-model mechanical
+```
+
+该命令只解析本地配置，不调用平台 API，也不切换当前会话模型。支持 `model` 字段的平台由控制器显式传入返回的模型 ID；若结果为 `configured: false`，则没有自动选择能力，不能臆造供应商模型，仍须遵守现有的显式指定 `model` 要求。
 
 ---
 
