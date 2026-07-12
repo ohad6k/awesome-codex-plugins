@@ -15,6 +15,13 @@ metadata:
   repository: https://github.com/xberg-io/crawlberg
 ---
 
+<!--
+AI-RULEZ :: GENERATED FILE — DO NOT EDIT
+Content-Hash: blake3:2400d592929aaf450317f228f695638b76d0f7987f5996106372e06b9abce70d
+Source-Hash: blake3:b5689383a3914da8e3cc6ad3614356ae7f98c90cf99cb1b4b47be38456ff7a7c
+Schema-Version: v1
+-->
+
 # Crawlberg
 
 Crawlberg is a Rust-native web crawler and scraper. It fetches static HTML

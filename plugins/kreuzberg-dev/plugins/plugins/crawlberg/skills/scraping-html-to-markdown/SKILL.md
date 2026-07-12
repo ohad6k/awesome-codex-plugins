@@ -2,9 +2,16 @@
 name: scraping-html-to-markdown
 description: >-
   Use when the user wants a single page rendered as clean Markdown plus
-  structured metadata. Covers `crawlberg scrape <url>`, JSON vs Markdown
+  structured metadata. Covers `crawlberg scrape URL`, JSON vs Markdown
   output, what metadata is returned, and how to handle JS-heavy pages.
 ---
+
+<!--
+AI-RULEZ :: GENERATED FILE — DO NOT EDIT
+Content-Hash: blake3:d4aa39402d49ad2eada44eea60c4a03a463b56134d3b869b5119f23d06144211
+Source-Hash: blake3:b5689383a3914da8e3cc6ad3614356ae7f98c90cf99cb1b4b47be38456ff7a7c
+Schema-Version: v1
+-->
 
 # Scraping HTML to Markdown
 

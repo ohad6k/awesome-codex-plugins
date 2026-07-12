@@ -3,9 +3,16 @@ name: mapping-urls
 description: >-
   Use when the user wants the list of URLs on a site rather than the page
   content — sitemap analysis, link planning, or seeding another tool. Covers
-  `crawlberg map <url>` with `--limit`, `--search`, robots, output, and how it
+  `crawlberg map URL` with `--limit`, `--search`, robots, output, and how it
   differs from a full crawl.
 ---
+
+<!--
+AI-RULEZ :: GENERATED FILE — DO NOT EDIT
+Content-Hash: blake3:f350881f7fc3fae75a1b3aec431fddcb0cd9fd62539b5f6ade1493d4b15a076b
+Source-Hash: blake3:b5689383a3914da8e3cc6ad3614356ae7f98c90cf99cb1b4b47be38456ff7a7c
+Schema-Version: v1
+-->
 
 # Mapping URLs
 

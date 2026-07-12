@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
-  "last_updated": "2026-07-11",
-  "total": 162,
+  "last_updated": "2026-07-12",
+  "total": 163,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -578,6 +578,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/AlexMi64/codex-project-autopilot/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Quality Engineering Skills",
+      "url": "https://github.com/RBraga01/Quality-Engineering-Skills",
+      "owner": "RBraga01",
+      "repo": "Quality-Engineering-Skills",
+      "description": "22 structured quality engineering skills for automotive and manufacturing: ISO 9001, IATF 16949, AIAG-VDA FMEA, VDA 6.3, PPAP, APQP, SPC, MSA.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/RBraga01/Quality-Engineering-Skills/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "RAG Reviewer",

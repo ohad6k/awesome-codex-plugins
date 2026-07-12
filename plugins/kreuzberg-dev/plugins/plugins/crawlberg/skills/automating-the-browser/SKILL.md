@@ -3,9 +3,16 @@ name: automating-the-browser
 description: >-
   Use when extracting a page needs scripted interaction first — click, type,
   press a key, scroll, wait, screenshot, or run JS before capturing the DOM.
-  Covers `crawlberg interact <url> --actions` with the real action schema,
+  Covers `crawlberg interact URL --actions` with the real action schema,
   result shape, limits, and external-CDP options.
 ---
+
+<!--
+AI-RULEZ :: GENERATED FILE — DO NOT EDIT
+Content-Hash: blake3:c099a207dd4d659bcbd8000afd8d104f51644c894a2073d064b670ad7e7dee10
+Source-Hash: blake3:b5689383a3914da8e3cc6ad3614356ae7f98c90cf99cb1b4b47be38456ff7a7c
+Schema-Version: v1
+-->
 
 # Automating the browser
 

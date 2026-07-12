@@ -7,6 +7,13 @@ description: >-
   Firecrawl-v1-compatible endpoints, `--host`/`--port`, and when to prefer it.
 ---
 
+<!--
+AI-RULEZ :: GENERATED FILE — DO NOT EDIT
+Content-Hash: blake3:a011fca3e4de3a4e6442e1779c4425d884cafb3369765d37e52d2f01dd8671bb
+Source-Hash: blake3:b5689383a3914da8e3cc6ad3614356ae7f98c90cf99cb1b4b47be38456ff7a7c
+Schema-Version: v1
+-->
+
 # Serving the API
 
 `crawlberg serve` starts a long-running REST API server exposing the crawl

@@ -8,7 +8,17 @@ category: midstream
 phase: [midstream]
 severity: minor
 applyTo:
-  - 'src/**/*.{ts,tsx,js,jsx,mjs}'
+  # ルーティング先（typescript-strict / typescript-nullcheck / type-driven-design /
+  # logging-observability / altitude-generalization / closure-scope-retention）の
+  # applyTo 包含検査 warning 解消（#1508 系）。scripts/**・runners/** はこのリポジトリ
+  # 自身に実在する自己参照ギャップ（#1494/#1500 と同型）、app/lib/packages/** は
+  # #1500 の precedent 準拠。
+  - 'src/**/*.{ts,tsx,js,jsx,mjs,cjs}'
+  - 'app/**/*.{ts,tsx,js,jsx,mjs,cjs}'
+  - 'lib/**/*.{ts,tsx,js,jsx,mjs,cjs}'
+  - 'packages/**/*.{ts,tsx,js,jsx,mjs,cjs}'
+  - 'scripts/**/*.{ts,tsx,js,jsx,mjs,cjs}'
+  - 'runners/**/*.{ts,tsx,js,jsx,mjs,cjs}'
 inputContext: [diff, fullFile]
 outputKind: [findings, actions]
 tags: [code-quality, default, entry, routing]
@@ -37,17 +47,17 @@ license: MIT
 | ログ, 監視                 | `logging-observability`          | ロギング・可観測性           |
 | 自動化, 境界               | `review-automation-boundary`     | レビュー自動化の境界         |
 | コメント, トリアージ       | `review-comment-triage`          | レビューコメント分類         |
-| a11y, アクセシビリティ     | `a11y-accessible-name`           | アクセシビリティ基本         |
-| Next.js, App Router        | `nextjs-app-router-boundary`     | Next.js 境界チェック         |
 | 幻覚的参照, 実在確認       | `hallucinated-reference`         | 新規参照の実在確認           |
 | 簡素化, 整理, simplify     | SIMPLIFY 観点（本 skill 内）     | 品質クリーンアップ4観点      |
 | 破壊的操作, undo, 回復支援 | UX-SAFEGUARD 観点（本 skill 内） | 操作の安全装置2観点          |
+
+> UI/コンポーネント系のルーティング（a11y, デザインシステム, Next.js App Router 境界等）は `river-review-frontend` に一元化済み（#1462）。本ルーターからは移設し、二重発火を避けている。
 
 ### デフォルト動作
 
 - キーワード指定なし → 以下のヒューリスティクスで判定:
   - `.ts`/`.tsx`ファイル → TypeScript strict + nullチェック
-  - コンポーネントファイル → a11yチェック追加
+  - コンポーネントファイル → `river-review-frontend` も参照（a11y・デザインシステム観点は frontend 側が担当）
   - 設定ファイル → 型駆動設計チェック
 
 ## Checklist / チェックリスト
@@ -74,6 +84,7 @@ license: MIT
 - `any`の使用が最小限か
 - 型ガードが適切か
 - null/undefinedの扱いが安全か
+- 型検査対象外の分界（#1476）: `scripts/`（tsconfig の `include` に含まれず tsc 検査対象外）の JSDoc で `unknown` を `any` へ緩める提案はしない。`unknown` は呼び出し側に絞り込みを強制する意図的で保守的な選択。詳細と canary は `existing-pattern-conformance` の「False-positive guards」を参照。
 
 ### エラーハンドリング
 
@@ -87,7 +98,7 @@ license: MIT
 ```text
 1. ファイル種別の判定
    ├─ .ts/.tsxファイル → TypeScript strict + nullチェックを選択
-   ├─ コンポーネントファイル → a11yチェックを追加
+   ├─ コンポーネントファイル → river-review-frontend も参照（a11y・デザインシステム観点）
    ├─ 設定ファイル → 型駆動設計チェックを選択
    └─ キーワード指定あり → 該当スキルを直接選択
       （SIMPLIFY / UX-SAFEGUARD 観点のキーワード該当時は本 skill 内で実行。キーワードは ROUTING.md を参照）
@@ -99,9 +110,7 @@ license: MIT
    ├─ type-driven-design: 型駆動設計
    ├─ logging-observability: ロギング・可観測性
    ├─ review-automation-boundary: レビュー自動化の境界
-   ├─ a11y-accessible-name: アクセシビリティ
-   ├─ hallucinated-reference: 新規参照の実在確認
-   └─ nextjs-app-router-boundary: Next.js境界
+   └─ hallucinated-reference: 新規参照の実在確認
 
 3. 統合
    ├─ 重複する指摘の除去
@@ -142,11 +151,12 @@ license: MIT
 
 ## 他スキルとの関係
 
-| スキル                      | 関係 | 棲み分け                                                    |
-| --------------------------- | ---- | ----------------------------------------------------------- |
-| `river-review-architecture` | 補完 | code は「ミクロ品質」、architecture は「マクロ設計」        |
-| `river-review-testing`      | 補完 | code は「プロダクションコード」、testing は「テストコード」 |
-| `river-review-performance`  | 補完 | code は「可読性」、performance は「実行効率」               |
+| スキル                      | 関係 | 棲み分け                                                                                            |
+| --------------------------- | ---- | --------------------------------------------------------------------------------------------------- |
+| `river-review-architecture` | 補完 | code は「ミクロ品質」、architecture は「マクロ設計」                                                |
+| `river-review-testing`      | 補完 | code は「プロダクションコード」、testing は「テストコード」                                         |
+| `river-review-performance`  | 補完 | code は「可読性」、performance は「実行効率」                                                       |
+| `river-review-frontend`     | 補完 | code は「一般コード品質」、frontend は「UI 固有の懸念」。UI 系ルートは frontend へ移設済み（#1462） |
 
 ## References
 
