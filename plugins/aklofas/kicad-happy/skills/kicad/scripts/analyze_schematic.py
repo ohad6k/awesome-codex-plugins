@@ -123,9 +123,45 @@ from validation_detectors import (
     validate_power_sequencing as validate_power_seq_deps,
     validate_led_resistors,
     validate_feedback_stability,
+    validate_crystal_load_caps,
 )
-from finding_schema import compute_trust_summary, sort_findings
+from lookup_detectors import (
+    detect_absolute_max_violations,
+    detect_vcc_outside_recommended,
+    detect_5v_on_non_tolerant_pin,
+    detect_wrong_signal_type,
+    detect_missing_required_components,
+)
+from finding_schema import compute_trust_summary, sort_findings, make_finding, assign_finding_ids
+from envelopes.schematic import SchematicEnvelope
+from schema_codec import emit_schema
+from inputs_builder import build_inputs, build_compat
+from capability_mode import get_capability_mode_ref
+from lookup_helpers import read_design_context
 
+
+def _resolve_lookup_paths(sch_path: str | Path,
+                           analysis_dir: str | Path | None) -> tuple[Path | None, dict | None]:
+    """Resolve (cache_dir, design_context) for AnalysisContext (Phase 4d-active).
+
+    cache_dir is the datasheets/extracted/ directory adjacent to the schematic
+    (matching the existing convention used by analyze_thermal.py and the
+    audit_datasheet_coverage check). Returns None when the directory doesn't
+    exist — `lookup()` already handles None gracefully.
+
+    design_context is the parsed design_context.json from the analysis dir,
+    or None when absent or analysis_dir is None.
+    """
+    sch_dir = Path(sch_path).resolve().parent
+    candidates = [
+        sch_dir / "datasheets" / "extracted",
+        sch_dir.parent / "datasheets" / "extracted",
+    ]
+    cache_dir = next((c for c in candidates if c.is_dir()), None)
+    dc = read_design_context(analysis_dir) if analysis_dir else None
+    return cache_dir, dc
+
+ANALYZER_SOURCE = "sch"
 
 # ---------------------------------------------------------------------------
 # Case-insensitive distributor / MPN property helpers
@@ -305,6 +341,16 @@ def extract_lib_symbols(root: list) -> dict:
     return symbols
 
 
+# KiCad Y-down base TRANSFORM matrix (x1,y1,x2,y2) per (at .. angle),
+# from sch_io_kicad_sexpr_parser.cpp:3490-3497 (parseSchematicSymbol T_at).
+_ANGLE_TRANSFORM = {
+    0:   (1, 0, 0, 1),
+    90:  (0, 1, -1, 0),
+    180: (-1, 0, 0, -1),
+    270: (0, -1, 1, 0),
+}
+
+
 def apply_rotation(px: float, py: float, angle_deg: float) -> tuple[float, float]:
     """Apply rotation to a pin offset. KiCad uses degrees, CCW positive."""
     # EQ-065: x'=x·cosθ-y·sinθ, y'=x·sinθ+y·cosθ (2D rotation)
@@ -356,12 +402,21 @@ def compute_pin_positions(component: dict, lib_symbols: dict) -> list[dict]:
             rpx = a * px + b * py
             rpy = c * px + d * py
         else:
-            # KiCad 6+: decomposed angle + mirror
-            if mirror_x:
-                py = -py
-            if mirror_y:
-                px = -px
-            rpx, rpy = apply_rotation(px, py, angle)
+            # KiCad 6+: decomposed angle + mirror. Compose exactly as KiCad does
+            # so rotation+mirror combos match (mirror inverts rotation handedness).
+            # KiCad builds a Y-down 2x2 TRANSFORM: the (at .. angle) sets the base
+            # rotation matrix, then (mirror x|y) is composed ON THE RIGHT via
+            # new = old * mirror (sch_symbol.cpp:SetOrientation, lines 2937-2941).
+            # TransformCoordinate(P)=(x1*Px+y1*Py, x2*Px+y2*Py) (kimath transform.cpp:40-43).
+            # We work in math-up offsets (Py positive = up), so convert the Y-down
+            # result back: rpx = x1*px - y1*py, rpy = -x2*px + y2*py.
+            x1, y1, x2, y2 = _ANGLE_TRANSFORM.get(int(angle) % 360, (1, 0, 0, 1))
+            if mirror_x:  # compose with SYM_MIRROR_X temp = (1,0,0,-1) on the right
+                x1, y1, x2, y2 = x1, y1, -x2, -y2
+            if mirror_y:  # compose with SYM_MIRROR_Y temp = (-1,0,0,1) on the right
+                x1, y1, x2, y2 = -x1, -y1, x2, y2
+            rpx = x1 * px - y1 * py
+            rpy = -x2 * px + y2 * py
 
         # Absolute position: Y-axis inversion (symbol coords are math-up, schematic is screen-down)
         abs_x = round(cx + rpx, 4)
@@ -784,6 +839,16 @@ def analyze_signal_paths(ctx: AnalysisContext) -> dict:
     power_seq_dep_findings = validate_power_seq_deps(ctx, power_regulators)
     led_resistor_findings = validate_led_resistors(ctx)
     feedback_stability_findings = validate_feedback_stability(ctx, power_regulators)
+    crystal_load_findings = validate_crystal_load_caps(ctx, crystal_circuits)
+
+    # Lookup detectors (Phase 4c) — consume v1.4 datasheet facts via lookup().
+    # Soft-skip when get_facts() returns None (no MPN cache). Synonym-resolved
+    # rail keys per addendum §A2; per-pin Pin.absolute_max overrides rail-level.
+    am_001_findings = detect_absolute_max_violations(ctx, rail_voltages)
+    ov_001_findings = detect_vcc_outside_recommended(ctx, rail_voltages)
+    ft_001_findings = detect_5v_on_non_tolerant_pin(ctx, rail_voltages)
+    pm_001_findings = detect_wrong_signal_type(ctx)
+    ex_001_findings = detect_missing_required_components(ctx, power_regulators)
 
     # New domain detectors (rich format)
     wireless_modules = detect_wireless_modules(ctx)
@@ -1008,7 +1073,15 @@ def analyze_signal_paths(ctx: AnalysisContext) -> dict:
             usb_findings +
             power_seq_dep_findings +
             led_resistor_findings +
-            feedback_stability_findings
+            feedback_stability_findings +
+            crystal_load_findings
+        ),
+        "lookup_findings": (
+            am_001_findings +
+            ov_001_findings +
+            ft_001_findings +
+            pm_001_findings +
+            ex_001_findings
         ),
     }
 
@@ -1622,6 +1695,9 @@ def compute_statistics(components: list[dict], nets: dict, bom: list[dict],
     power_rails = []
     for name in power_rail_names:
         clean = _clean_hierarchical_name(name)
+        # Skip PWR_FLAG — it's an ERC directive, not a physical rail.
+        if clean == "PWR_FLAG":
+            continue
         v = _parse_voltage_from_net_name(clean)
         power_rails.append({"name": clean, "voltage": v})
 
@@ -1884,7 +1960,8 @@ def _classify_ic_function(lib_id: str, value: str, description: str) -> str:
     return ""
 
 
-def analyze_ic_pinouts(ctx: AnalysisContext) -> list[dict]:
+def analyze_ic_pinouts(ctx: AnalysisContext,
+                       target_types: set[str] | None = None) -> list[dict]:
     """Analyze each IC's pinout for datasheet cross-referencing.
 
     For every IC, produces a detailed per-pin analysis showing:
@@ -1910,8 +1987,13 @@ def analyze_ic_pinouts(ctx: AnalysisContext) -> list[dict]:
 
     results = []
 
-    # Analyze ICs and other complex components (connectors, crystals, oscillators, etc.)
-    target_types = {"ic", "connector", "crystal", "oscillator"}
+    # Analyze ICs and other complex components (connectors, crystals, oscillators, etc.).
+    # target_types is parameterised so the same code path can build a parallel
+    # transistor_pin_analysis[] (F4) — verifying gate/source/drain wiring on
+    # half-bridges is one of the highest-value review tasks and previously
+    # required reconstructing the pin map from nets[].pins[] by hand.
+    if target_types is None:
+        target_types = {"ic", "connector", "crystal", "oscillator"}
     target_components = [c for c in components if c["type"] in target_types]
 
     for ic in target_components:
@@ -2923,7 +3005,7 @@ def _parse_legacy_single_sheet(path: str) -> tuple:
     return components, wires, labels, junctions, no_connects, sub_sheet_paths, lib_lines
 
 
-def parse_legacy_schematic(path: str) -> dict:
+def parse_legacy_schematic(path: str, analysis_dir: str | Path | None = None) -> dict:
     """Parse a KiCad 5 legacy .sch file and return the same structure as analyze_schematic.
 
     Legacy format uses line-oriented text with $Comp/$EndComp blocks, coordinates
@@ -3074,13 +3156,17 @@ def parse_legacy_schematic(path: str) -> dict:
     pin_net = build_pin_to_net_map(nets)
 
     # Build shared analysis context for legacy path
+    _cache_dir, _design_context = _resolve_lookup_paths(path, analysis_dir)
     ctx = AnalysisContext(
         components=all_components,
         nets=nets,
         lib_symbols=lib_symbols,
         pin_net=pin_net,
         no_connects=all_no_connects,
+        cache_dir=_cache_dir,
+        design_context=_design_context,
     )
+    ctx.source = ANALYZER_SOURCE
     from netlist_queries import NetlistQueries
     ctx.nq = NetlistQueries(ctx)
 
@@ -3165,12 +3251,12 @@ def parse_legacy_schematic(path: str) -> dict:
 
     result = {
         "analyzer_type": "schematic",
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "summary": {"total_findings": len(findings), "by_severity": sev_counts},
         "trust_summary": compute_trust_summary(findings),
-        "file": str(path),
         "kicad_version": "5 (legacy)",
         "file_version": "4",
+        "title_block": {},  # legacy .sch has no (title_block ...) node (TH-043)
         "sheets_parsed": len(sheets_parsed),
         "sheet_files": sheets_parsed,
         "statistics": stats,
@@ -3179,6 +3265,7 @@ def parse_legacy_schematic(path: str) -> dict:
         "nets": nets,
         "subcircuits": subcircuits,
         "findings": findings,
+        "assessments": [],
         "design_analysis": design_analysis,
         "labels": all_labels,
         "no_connects": all_no_connects,
@@ -4892,12 +4979,25 @@ def audit_datasheet_coverage(components: list[dict],
     # datasheet_extract_cache; its presence implies datasheets exist.
     import os as _os
     pd = project_dir or "."
-    candidates = [
-        _os.path.join(pd, "datasheets"),
-        _os.path.join(pd, "datasheets", "extracted"),
-        _os.path.join(pd, "docs", "datasheets"),
-        _os.path.join(_os.path.dirname(pd), "datasheets"),
-    ]
+    # rc.2 4.2: widened search — walk up 1–2 parent dirs and match the case-
+    # insensitive [Dd]atasheets?/ pattern (singular or plural). Eliminates
+    # DS-001 FPs on repos where the datasheets directory lives one level up
+    # (multi-project monorepos, board variant subfolders, etc.).
+    _DS_DIR_NAMES = (
+        "datasheets", "Datasheets",
+        "datasheet", "Datasheet",
+    )
+    candidates: list[str] = []
+    _bases = [pd, _os.path.dirname(pd) or pd]
+    _grand = _os.path.dirname(_bases[1]) if _bases[1] else pd
+    if _grand and _grand != _bases[1]:
+        _bases.append(_grand)
+    for _base in _bases:
+        for _name in _DS_DIR_NAMES:
+            candidates.append(_os.path.join(_base, _name))
+            candidates.append(_os.path.join(_base, _name, "extracted"))
+        candidates.append(_os.path.join(_base, "docs", "datasheets"))
+        candidates.append(_os.path.join(_base, "documentation", "datasheets"))
     ds_dir_found = next(
         (c for c in candidates if _os.path.isdir(c)), None)
     ds_file_count = 0
@@ -5156,6 +5256,83 @@ def audit_sourcing_gate(components: list[dict]) -> list[dict]:
         },
     })
     return findings
+
+
+def audit_dnp_rate(components: list[dict]) -> list[dict]:
+    """Emit BL-001 when DNP coverage is high enough to make the BOM
+    effectively empty.
+
+    The SS-001..003 sourcing rules filter to non-DNP components first, so
+    a 100%-DNP BOM passes them silently — but a reviewer skimming "no
+    SS-* findings" might miss that no parts will actually be placed by
+    assembly. BL-001 surfaces that explicitly.
+
+    Tiers:
+      ≥90% DNP  →  severity=error    ("assembly cannot place this BOM")
+      ≥50% DNP  →  severity=warning  ("most parts marked DNP — confirm")
+      <50% DNP  →  no finding (DNP-by-variant is a normal pattern)
+
+    A single-component schematic doesn't fire — BL-001's value is on full
+    assemblies, not on one-component drafts.
+    """
+    real = [c for c in components
+            if c.get("type") not in ("power_symbol", "power_flag", "flag",
+                                     "test_point", "mounting_hole",
+                                     "fiducial", "graphic")
+            and c.get("in_bom")]
+    if len(real) < 2:
+        return []
+    dnp_count = sum(1 for c in real if c.get("dnp"))
+    total = len(real)
+    pct = dnp_count / total * 100.0
+    if pct < 50.0:
+        return []
+    if pct >= 90.0:
+        sev = "error"
+        headline = (
+            f"BOM is effectively empty: {dnp_count}/{total} ({pct:.0f}%) "
+            "components are marked DNP — no parts will be placed by assembly."
+        )
+        impact = ("Pre-fab gate: the BOM as-is cannot be sent to an assembly "
+                  "house. Confirm whether this is the intended stuffing variant.")
+    else:
+        sev = "warning"
+        headline = (
+            f"High DNP rate: {dnp_count}/{total} ({pct:.0f}%) components marked "
+            "DNP. Confirm intended stuffing variant before fab."
+        )
+        impact = ("Most components are flagged DNP — likely a no-stuff variant "
+                  "or an in-progress BOM. Confirm before assembly.")
+    dnp_refs = sorted(c.get("reference", "") for c in real if c.get("dnp"))
+    return [{
+        "detector": "audit_dnp_rate",
+        "rule_id": "BL-001",
+        "severity": sev,
+        "confidence": "deterministic",
+        "evidence_source": "bom",
+        "category": "sourcing",
+        "summary": headline,
+        "description": (
+            f"Audited {total} non-fixture BOM components; {dnp_count} are "
+            f"marked DNP ({pct:.1f}%). The DNP flag tells the assembly "
+            "house to skip a component — at this rate the resulting board "
+            "would be largely unpopulated."),
+        "components": dnp_refs[:50],
+        "nets": [],
+        "pins": [],
+        "dnp_rate_percent": round(pct, 1),
+        "dnp_count": dnp_count,
+        "total_components": total,
+        "recommendation": (
+            "If this BOM is for a no-stuff stuffing variant, suppress BL-001 "
+            "via project config. Otherwise clear the DNP flag on components "
+            "that should be assembled."),
+        "report_context": {
+            "section": "Sourcing",
+            "impact": impact,
+            "standard_ref": "",
+        },
+    }]
 
 
 # Generic transistor symbol prefixes that encode assumed pin order
@@ -6382,7 +6559,7 @@ _DERATING_PROFILES = {
 
 def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
                              project_dir: str | None = None,
-                             derating_profile: str = "commercial") -> dict:
+                             derating_profile: str = "commercial") -> list[dict]:
     """Check component voltage/power ratings against applied conditions.
 
     Checks capacitors (voltage derating by dielectric type), IC absolute
@@ -6477,9 +6654,7 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
     _RESISTOR_POWER_RATING = {"0201": 0.05, "0402": 0.0625, "0603": 0.1, "0805": 0.125,
                               "1206": 0.25, "1210": 0.5, "2010": 0.75, "2512": 1.0}
 
-    derating_issues = []
-    over_designed = []
-    caps_checked = ics_checked = resistors_checked = 0
+    findings: list[dict] = []
 
     # ---- Capacitor voltage derating ----
     for comp in components:
@@ -6498,7 +6673,6 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
         dielectric = _classify_cap_dielectric(comp)
         derating_factor = _CAP_DERATING.get(dielectric, 0.50)
         max_working_v = rated_v * derating_factor
-        caps_checked += 1
         margin_pct = ((rated_v - v_rail) / rated_v) * 100 if rated_v > 0 else 0
         severity = derating_rule = None
         if v_rail > rated_v:
@@ -6506,10 +6680,22 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
         elif v_rail > max_working_v:
             severity, derating_rule = "warning", f"{dielectric}_{int(derating_factor * 100)}pct"
         if severity:
-            derating_issues.append({"ref": ref, "value": comp["value"], "component_type": "capacitor",
-                                    "rail": pwr_net, "rail_voltage": v_rail, "rated_voltage": rated_v,
-                                    "margin_pct": round(margin_pct, 1), "dielectric": dielectric,
-                                    "derating_rule": derating_rule, "severity": severity})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-001",
+                category="component_derating",
+                summary=(f"{ref} ({comp['value']}) {'exceeds' if severity == 'critical' else 'has marginal'} "
+                         f"voltage derating on {pwr_net} ({v_rail:.1f}V on {rated_v:.0f}V {dielectric} cap)"),
+                description=(f"Applied {v_rail:.1f}V on {pwr_net}; {rated_v:.0f}V-rated {dielectric} capacitor. "
+                             f"Derating rule: {derating_rule}. Margin {round(margin_pct, 1)}%."),
+                severity="error" if severity == "critical" else "warning",
+                confidence="heuristic", evidence_source="topology",
+                components=[ref], nets=[pwr_net],
+                recommendation=("Increase capacitor voltage rating." if severity == "critical"
+                                else f"Consider a higher voltage rating — {dielectric} caps need derating margin."),
+                impact="Capacitor may fail short under applied voltage." if severity == "critical" else "",
+                derating_rule=derating_rule, rail=pwr_net, rail_voltage=v_rail,
+                rated_voltage=rated_v, margin_pct=round(margin_pct, 1), dielectric=dielectric,
+            ))
         elif margin_pct > profile["over_designed_cap_margin"] * 100:
             suggested_v = v_rail * 2.5
             suggested_ratings = [v for v in (6.3, 10, 16, 25, 50, 100) if v >= suggested_v]
@@ -6517,9 +6703,17 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
             if suggested_ratings and suggested_ratings[0] < rated_v:
                 suggestion = (f"Consider {suggested_ratings[0]:.0f}V rating — "
                               f"{rated_v:.0f}V is significantly over-designed for a {v_rail:.1f}V rail")
-            over_designed.append({"ref": ref, "value": comp["value"], "component_type": "capacitor",
-                                  "rail": pwr_net, "rail_voltage": v_rail, "rated_voltage": rated_v,
-                                  "margin_pct": round(margin_pct, 1), "suggestion": suggestion})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-004",
+                category="component_derating",
+                summary=f"{ref} ({comp['value']}) is over-designed for {pwr_net} ({rated_v:.0f}V on {v_rail:.1f}V rail)",
+                description=f"{rated_v:.0f}V-rated capacitor on a {v_rail:.1f}V rail — margin {round(margin_pct, 1)}%.",
+                severity="info", confidence="heuristic", evidence_source="topology",
+                components=[ref], nets=[pwr_net],
+                recommendation=suggestion or "Consider a lower voltage rating to reduce cost/size.",
+                derating_rule="over_designed", rail=pwr_net, rail_voltage=v_rail,
+                rated_voltage=rated_v, margin_pct=round(margin_pct, 1),
+            ))
 
     # ---- IC absolute max voltage check ----
     for comp in components:
@@ -6551,20 +6745,34 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
                     max_rail_v, max_rail_name = v, net_name
         if max_rail_v <= 0:
             continue
-        ics_checked += 1
         margin_pct = ((vin_max - max_rail_v) / vin_max) * 100 if vin_max > 0 else 0
         if max_rail_v > vin_max:
-            derating_issues.append({"ref": ref, "value": comp["value"], "component_type": "ic",
-                                    "rail": max_rail_name, "rail_voltage": max_rail_v,
-                                    "abs_max_vin": vin_max, "margin_pct": round(margin_pct, 1),
-                                    "derating_rule": "exceeds_abs_max", "data_source": "extraction_cache",
-                                    "severity": "critical"})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-002",
+                category="component_derating",
+                summary=f"{ref} exceeds datasheet absolute-max voltage on {max_rail_name} ({max_rail_v:.1f}V > {vin_max:.1f}V)",
+                description=(f"{ref} ({comp['value']}) sees {max_rail_v:.1f}V on {max_rail_name}; datasheet "
+                             f"absolute-max input is {vin_max:.1f}V. Margin {round(margin_pct, 1)}%."),
+                severity="error", confidence="datasheet-backed", evidence_source="datasheet",
+                components=[ref], nets=[max_rail_name],
+                recommendation="Reduce the rail voltage or select a part rated for this rail.",
+                impact="Operating beyond absolute maximum risks immediate device damage.",
+                derating_rule="exceeds_abs_max", rail=max_rail_name, rail_voltage=max_rail_v,
+                abs_max_vin=vin_max, margin_pct=round(margin_pct, 1),
+            ))
         elif margin_pct < 10:
-            derating_issues.append({"ref": ref, "value": comp["value"], "component_type": "ic",
-                                    "rail": max_rail_name, "rail_voltage": max_rail_v,
-                                    "abs_max_vin": vin_max, "margin_pct": round(margin_pct, 1),
-                                    "derating_rule": "ic_10pct_abs_max", "data_source": "extraction_cache",
-                                    "severity": "warning"})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-002",
+                category="component_derating",
+                summary=f"{ref} operates near datasheet absolute-max voltage on {max_rail_name} ({round(margin_pct, 1)}% margin)",
+                description=(f"{ref} ({comp['value']}) sees {max_rail_v:.1f}V on {max_rail_name}; datasheet "
+                             f"absolute-max input is {vin_max:.1f}V. Only {round(margin_pct, 1)}% margin."),
+                severity="warning", confidence="datasheet-backed", evidence_source="datasheet",
+                components=[ref], nets=[max_rail_name],
+                recommendation="Confirm worst-case rail tolerance leaves margin to absolute max.",
+                derating_rule="ic_10pct_abs_max", rail=max_rail_name, rail_voltage=max_rail_v,
+                abs_max_vin=vin_max, margin_pct=round(margin_pct, 1),
+            ))
 
     # ---- Resistor power dissipation check ----
     for comp in components:
@@ -6597,7 +6805,6 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
         rated_power = _RESISTOR_POWER_RATING.get(pkg)
         if not rated_power:
             continue
-        resistors_checked += 1
         max_working_power = rated_power * profile["resistor_power"]
         margin_pct = ((rated_power - power_w) / rated_power) * 100 if rated_power > 0 else 0
         severity = derating_rule = None
@@ -6606,12 +6813,24 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
         elif power_w > max_working_power:
             severity, derating_rule = "warning", "resistor_50pct_power"
         if severity:
-            derating_issues.append({"ref": ref, "value": comp["value"], "component_type": "resistor",
-                                    "rail": pwr_net or n1, "voltage_across": v_across,
-                                    "resistance_ohms": pv, "estimated_power_w": round(power_w, 4),
-                                    "rated_power_w": rated_power, "package": pkg,
-                                    "margin_pct": round(margin_pct, 1), "derating_rule": derating_rule,
-                                    "severity": severity})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-003",
+                category="component_derating",
+                summary=(f"{ref} ({comp['value']}) {'exceeds' if severity == 'critical' else 'has marginal'} "
+                         f"power derating ({power_w*1000:.0f}mW on {rated_power*1000:.0f}mW {pkg})"),
+                description=(f"{ref} dissipates ~{power_w*1000:.0f}mW ({v_across:.1f}V across {pv:.0f}Ω); "
+                             f"{pkg} package rated {rated_power*1000:.0f}mW. Derating rule: {derating_rule}. "
+                             f"Margin {round(margin_pct, 1)}%."),
+                severity="error" if severity == "critical" else "warning",
+                confidence="heuristic", evidence_source="topology",
+                components=[ref], nets=[pwr_net or n1] if (pwr_net or n1) else [],
+                recommendation=("Use a larger package or higher power rating." if severity == "critical"
+                                else "Consider a larger package for power derating margin."),
+                impact="Resistor may overheat or fail open." if severity == "critical" else "",
+                derating_rule=derating_rule, voltage_across=v_across, resistance_ohms=pv,
+                estimated_power_w=round(power_w, 4), rated_power_w=rated_power, package=pkg,
+                margin_pct=round(margin_pct, 1),
+            ))
         elif margin_pct > profile["over_designed_res_margin"] * 100:
             pkg_sizes = ["0201", "0402", "0603", "0805", "1206", "1210", "2010", "2512"]
             suggested_pkg = None
@@ -6624,40 +6843,20 @@ def analyze_voltage_derating(ctx: AnalysisContext, signal_analysis: dict,
             if suggested_pkg and suggested_pkg != pkg:
                 suggestion = (f"Consider {suggested_pkg} package — {pkg} is significantly "
                               f"over-designed ({power_w*1000:.1f}mW vs {rated_power*1000:.0f}mW rated)")
-            over_designed.append({"ref": ref, "value": comp["value"], "component_type": "resistor",
-                                  "package": pkg, "estimated_power_w": round(power_w, 4),
-                                  "rated_power_w": rated_power, "margin_pct": round(margin_pct, 1),
-                                  "suggestion": suggestion})
+            findings.append(make_finding(
+                detector="analyze_voltage_derating", rule_id="VD-004",
+                category="component_derating",
+                summary=f"{ref} ({comp['value']}) package is over-designed ({power_w*1000:.1f}mW in {pkg})",
+                description=f"{ref} dissipates ~{power_w*1000:.1f}mW in a {pkg} ({rated_power*1000:.0f}mW rated) — margin {round(margin_pct, 1)}%.",
+                severity="info", confidence="heuristic", evidence_source="topology",
+                components=[ref], nets=[],
+                recommendation=suggestion or "Consider a smaller package to reduce cost/size.",
+                derating_rule="over_designed", estimated_power_w=round(power_w, 4),
+                rated_power_w=rated_power, package=pkg, margin_pct=round(margin_pct, 1),
+            ))
 
-    # ---- Build result ----
-    total_checked = caps_checked + ics_checked + resistors_checked
-    if not derating_issues and not over_designed and total_checked == 0:
-        return {}
-
-    result: dict = {
-        "derating_profile": derating_profile,
-        "caps_checked": caps_checked, "ics_checked": ics_checked, "resistors_checked": resistors_checked,
-        "issues": derating_issues,
-    }
-    observations = []
-    cap_critical = [i for i in derating_issues if i.get("component_type") == "capacitor" and i["severity"] == "critical"]
-    cap_warnings = [i for i in derating_issues if i.get("component_type") == "capacitor" and i["severity"] == "warning"]
-    ic_issues = [i for i in derating_issues if i.get("component_type") == "ic"]
-    res_issues = [i for i in derating_issues if i.get("component_type") == "resistor"]
-    if cap_critical:
-        observations.append(f"{len(cap_critical)} cap(s) exceed rated voltage — risk of failure")
-    if cap_warnings:
-        observations.append(f"{len(cap_warnings)} cap(s) have insufficient voltage derating margin")
-    if ic_issues:
-        observations.append(f"{len(ic_issues)} IC(s) operating near or beyond absolute maximum voltage")
-    if res_issues:
-        observations.append(f"{len(res_issues)} resistor(s) exceed power derating limit")
-    if over_designed:
-        result["over_designed"] = over_designed
-        observations.append(f"{len(over_designed)} component(s) significantly over-designed — potential cost/size optimization")
-    if observations:
-        result["observations"] = observations
-    return result
+    # ---- Return findings ----
+    return findings
 
 
 def analyze_protocol_compliance(components: list[dict], nets: dict,
@@ -8573,7 +8772,8 @@ def enrich_from_hierarchy(signal_analysis: dict, design_analysis: dict,
 
 
 def analyze_schematic(path: str, project_root: str | None = None,
-                      no_hierarchy: bool = False) -> dict:
+                      no_hierarchy: bool = False,
+                      analysis_dir: str | Path | None = None) -> dict:
     """Main analysis function. Returns complete structured data.
 
     For hierarchical designs (multi-sheet), recursively parses all sub-sheets
@@ -8597,7 +8797,7 @@ def analyze_schematic(path: str, project_root: str | None = None,
         first_line = f.readline().strip()
 
     if first_line.startswith("EESchema"):
-        return parse_legacy_schematic(path)
+        return parse_legacy_schematic(path, analysis_dir=analysis_dir)
 
     # Parse root sheet and all sub-sheets recursively via parse_all_sheets().
     root_tree = parse_file(path)
@@ -8686,11 +8886,20 @@ def analyze_schematic(path: str, project_root: str | None = None,
                           file=sys.stderr)
                     sym_inst = parsed.get("root_symbol_instances", {})
                     base_idx = len(parsed["sheets_parsed"])
-                    for sheet_path in extra_sheets:
+                    # Queue-based walk so peers with their own inner
+                    # (sheet ...) references — the "hybrid" Altium-flat
+                    # shape, flat top + sub-hierarchy beneath one or more
+                    # peers — get their child sheets merged in too. Pure
+                    # Altium-flat imports (no inner refs) walk this loop
+                    # exactly once per peer with no recursion. PR #19
+                    # follow-up #14 (Copilot review 3221428004).
+                    to_parse = list(extra_sheets)
+                    while to_parse:
+                        sheet_path = to_parse.pop(0)
                         try:
                             (_, comps, wires, labels, junctions,
-                             no_connects, _, lib_syms, text_annot,
-                             bus_elems, title_blk) = \
+                             no_connects, sub_sheet_paths, lib_syms,
+                             text_annot, bus_elems, title_blk) = \
                                 parse_single_sheet(
                                     sheet_path,
                                     symbol_instances=sym_inst)
@@ -8724,6 +8933,15 @@ def analyze_schematic(path: str, project_root: str | None = None,
                             elif isinstance(bv, dict):
                                 parsed["bus_elements"].setdefault(bk, {}).update(bv)
                         parsed["sheets_parsed"].append(sheet_path)
+                        # Enqueue any sub-sheet references from THIS peer
+                        # for the hybrid case. `seen` is the cycle guard:
+                        # it already has root + every peer; we add each
+                        # sub-sheet on first sighting.
+                        for sub_path, _sheet_uuid in sub_sheet_paths:
+                            abs_sub = str(Path(sub_path).resolve())
+                            if abs_sub not in seen:
+                                seen.add(abs_sub)
+                                to_parse.append(abs_sub)
                     # Power symbols were extracted from root-sheet components
                     # only; refresh from the merged list so peer-sheet ones are
                     # included.
@@ -8756,6 +8974,7 @@ def analyze_schematic(path: str, project_root: str | None = None,
     pin_net = build_pin_to_net_map(nets)
 
     # Build shared analysis context (replaces repeated comp_lookup / parsed_values / known_power_rails)
+    _cache_dir, _design_context = _resolve_lookup_paths(path, analysis_dir)
     ctx = AnalysisContext(
         components=all_components,
         nets=nets,
@@ -8764,7 +8983,10 @@ def analyze_schematic(path: str, project_root: str | None = None,
         no_connects=all_no_connects,
         generator_version=generator_version,
         hierarchy_context=hierarchy_ctx,
+        cache_dir=_cache_dir,
+        design_context=_design_context,
     )
+    ctx.source = ANALYZER_SOURCE
     from netlist_queries import NetlistQueries
     ctx.nq = NetlistQueries(ctx)
 
@@ -8773,6 +8995,10 @@ def analyze_schematic(path: str, project_root: str | None = None,
 
     # Detailed IC pinout analysis for datasheet cross-referencing
     ic_analysis = analyze_ic_pinouts(ctx)
+    # Parallel transistor pinout analysis (F4) — same code path, different
+    # filter. ic_pin_analysis stays IC/connector/crystal/oscillator-only for
+    # consumer compatibility; transistors go in their own array.
+    transistor_analysis = analyze_ic_pinouts(ctx, target_types={"transistor"})
 
     # Analyze connectivity for issues
     connectivity_issues = analyze_connectivity(all_components, nets, all_no_connects)
@@ -8799,6 +9025,7 @@ def analyze_schematic(path: str, project_root: str | None = None,
     datasheet_coverage_findings = audit_datasheet_coverage(
         all_components, str(Path(path).parent))
     sourcing_gate_findings = audit_sourcing_gate(all_components)
+    dnp_rate_findings = audit_dnp_rate(all_components)
     alternate_pins = summarize_alternate_pins(all_lib_symbols)
     ground_domains = classify_ground_domains(nets, all_components)
     bus_topology = analyze_bus_topology(merged_bus, all_labels, nets)
@@ -8928,10 +9155,17 @@ def analyze_schematic(path: str, project_root: str | None = None,
     if sourcing_gate_findings:
         findings.extend(sourcing_gate_findings)
 
+    if dnp_rate_findings:
+        findings.extend(dnp_rate_findings)
+
     # NT-001 — single-pin nets weighted by pin type (Task 3)
     nt_findings = connectivity_issues.get("single_pin_net_findings", [])
     if nt_findings:
         findings.extend(nt_findings)
+
+    # VD-001..004 — component voltage/power derating (rich findings since v1.4)
+    if voltage_derating:
+        findings.extend(voltage_derating)
 
     # Build severity summary
     sev_counts = {"error": 0, "warning": 0, "info": 0}
@@ -8950,15 +9184,15 @@ def analyze_schematic(path: str, project_root: str | None = None,
 
     result = {
         "analyzer_type": "schematic",
-        "schema_version": "1.3.0",
+        "schema_version": "1.4.0",
         "summary": {"total_findings": len(findings), "by_severity": sev_counts},
         "trust_summary": compute_trust_summary(findings, bom=bom),
-        "file": str(path),
         "kicad_version": generator_version,
         "file_version": file_version,
         "title_block": root_title_block,
         "statistics": stats,
         "findings": findings,
+        "assessments": [],
         "bom": bom,
         "components": [
             {k: v for k, v in c.items() if k != "pins"}
@@ -8968,6 +9202,7 @@ def analyze_schematic(path: str, project_root: str | None = None,
         "nets": nets,
         "subcircuits": subcircuits,
         "ic_pin_analysis": ic_analysis,
+        "transistor_pin_analysis": transistor_analysis,
         "design_analysis": design_analysis,
         "connectivity_issues": connectivity_issues,
         "labels": all_labels,
@@ -9007,8 +9242,6 @@ def analyze_schematic(path: str, project_root: str | None = None,
         result["pdn_impedance"] = pdn_analysis
     if sleep_current:
         result["sleep_current_audit"] = sleep_current
-    if voltage_derating:
-        result["voltage_derating"] = voltage_derating
     if power_budget:
         result["power_budget"] = power_budget
     if power_sequencing:
@@ -9103,57 +9336,6 @@ def analyze_schematic(path: str, project_root: str | None = None,
     return result
 
 
-def _get_schema():
-    """Return JSON output schema description for --schema flag."""
-    return {
-        "analyzer_type": "string — always 'schematic'",
-        "schema_version": "string — semver (currently '1.3.0')",
-        "summary": {"total_findings": "int", "by_severity": {"error": "int", "warning": "int", "info": "int"}},
-        "trust_summary": {
-            "total_findings": "int",
-            "trust_level": "string — 'high' | 'mixed' | 'low'",
-            "by_confidence": "{deterministic: int, heuristic: int, datasheet-backed: int}",
-            "by_evidence_source": "{datasheet|topology|heuristic_rule|symbol_footprint|bom|geometry|api_lookup: int}",
-            "provenance_coverage_pct": "float — % of findings with provenance metadata",
-            "bom_coverage": "{mpn_pct: float, datasheet_pct: float} — MPN/datasheet coverage excluding power symbols",
-        },
-        "file": "string — input file path",
-        "kicad_version": "string — generator version",
-        "file_version": "string",
-        "title_block": {"title": "string", "date": "string", "rev": "string",
-                        "company": "string", "comments": "{number: string}"},
-        "statistics": {
-            "total_components": "int", "unique_parts": "int", "dnp_parts": "int",
-            "total_nets": "int", "total_wires": "int", "total_no_connects": "int",
-            "component_types": "{type_name: count}", "power_rails": "[string]",
-            "missing_mpn": "[reference_string]", "missing_footprint": "[reference_string]",
-        },
-        "findings": "[{detector, rule_id, severity, confidence, evidence_source, summary, category, components, nets, pins, recommendation, ...detection-specific fields}] — flat list of all findings",
-        "bom": "[{value, footprint, mpn, manufacturer, digikey, mouser, lcsc, element14, datasheet, description, references: [string], quantity: int, dnp: bool, type}]",
-        "components": "[{reference, value, lib_id, footprint, datasheet, description, mpn, manufacturer, digikey, mouser, lcsc, element14, x: float, y: float, angle: float, mirror_x: bool, mirror_y: bool, unit: int|null, uuid, in_bom: bool, dnp: bool, on_board: bool, type, keywords, pins: [{number, name, type}], parsed_value: {value: float, unit: string}}]",
-        "nets": "{net_name: {name, pins: [{component, pin_number, pin_name, pin_type}], point_count: int}}",
-        "subcircuits": "[{reference, path, sheet_name, sheet_file, instances: int}]",
-        "ic_pin_analysis": "[{reference, value, pin_summary: {pin_number: {name, type, connected: bool, net}}, function, notes: [string]}]",
-        "rail_voltages": "{net_name: voltage_float} — promoted from signal_analysis",
-        "net_classifications": "{net_name: {type, ...}} — promoted from signal_analysis",
-        "design_analysis": {
-            "net_classification": "{net: {type: 'power'|'ground'|'data'|...}}",
-            "power_domains": "{ic_power_rails: {ref: {voltage, rail_net}}, ...}",
-            "cross_domain_signals": "[signals crossing voltage domains]",
-            "bus_analysis": "{i2c|spi|uart|can|sdio|usb: [bus_instances]}",
-            "differential_pairs": "[{positive, negative, type: 'USB'|'LVDS'|'Ethernet'|'CAN'|'generic', shared_ics: [ref], has_esd: bool, series_resistors: [ref], termination: [{ref,value,ohms}]}]",
-            "erc_warnings": "[string]",
-            "passive_warnings": "[string]",
-        },
-        "connectivity_issues": {"single_pin_nets": "[net_name]", "multi_driver_nets": "[net_name]", "floating_nets": "[net_name]"},
-        "_optional_sections": "power_budget, power_sequencing, pdn_impedance, sleep_current_audit, usb_compliance, inrush_analysis, bom_optimization, test_coverage, assembly_complexity, sheets (multi-sheet only), missing_info, bom_lock, project_settings",
-        "hierarchy_context": "OPTIONAL — only present when analyzing a sub-sheet with hierarchy context resolved. Shape: {root_schematic, target_sheet, sheets_in_project: [string], cross_sheet_nets: {label: {external_components, is_power_rail, connected_sheets}}, project_power_rails: [string], reference_corrections_applied: int}",
-        "hierarchy_warning": "OPTIONAL string — present when sub-sheet detected without root",
-        "_redirected_from": "OPTIONAL string — original filename when sub-sheet was redirected to root",
-        "_stale_file_warning": "OPTIONAL string — present when input file is not in the project sheet tree",
-    }
-
-
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="KiCad Schematic Analyzer")
@@ -9181,11 +9363,13 @@ def main():
     parser.add_argument('--audience', default=None,
                         choices=['designer', 'reviewer', 'manager'],
                         help='Audience level for summaries and --text output')
+    parser.add_argument('--only-deterministic', action='store_true',
+                        help='Accepted for consistency; analyzers never write llm_* fields. '
+                             'Honored by downstream consumers (Phase 4 spec §3.4).')
     args = parser.parse_args()
 
     if args.schema:
-        print(json.dumps(_get_schema(), indent=2))
-        sys.exit(0)
+        emit_schema(SchematicEnvelope)
 
     if not args.schematic:
         parser.error("the following arguments are required: schematic")
@@ -9212,9 +9396,45 @@ def main():
     except ImportError:
         config = {"version": 1, "project": {}, "suppressions": []}
 
+    # Resolve canonical analysis_dir ONCE — used for both AnalysisContext
+    # (Phase 4d-active) and capability_mode_ref (Phase 4 §3.3). This must
+    # be the same path so `--analysis-dir X` writes outputs AND capability
+    # mode to the same X, not to ./analysis (audit Highest-Risk #4).
+    if args.analysis_dir:
+        _analysis_dir_for_ctx = Path(args.analysis_dir)
+    elif args.output:
+        _analysis_dir_for_ctx = Path(args.output).parent
+    else:
+        _analysis_dir_for_ctx = Path("analysis")
+
+    # Resolve capability_mode_ref BEFORE build_inputs so inputs.run_id ==
+    # capability_mode_ref.run_id (Phase 4 spec §3.3, audit Highest-Risk #5).
+    # First-writer-wins side effect: creates capability_mode.json if absent.
+    _capability_mode_ref = get_capability_mode_ref(_analysis_dir_for_ctx)
+
+    # Build inputs provenance block (Track 1.3).
+    _sch_path = Path(args.schematic)
+    if args.config:
+        _cfg_path = Path(args.config) if Path(args.config).is_file() else None
+    else:
+        _default_cfg = _sch_path.parent / ".kicad-happy.json"
+        _cfg_path = _default_cfg if _default_cfg.is_file() else None
+    inputs = build_inputs(
+        source_files=[_sch_path],
+        config_path=_cfg_path,
+        run_id=_capability_mode_ref["run_id"],
+    )
+    compat = build_compat()
+
     result = analyze_schematic(args.schematic,
                                project_root=args.project_root,
-                               no_hierarchy=args.no_hierarchy)
+                               no_hierarchy=args.no_hierarchy,
+                               analysis_dir=_analysis_dir_for_ctx)
+    # Inject provenance and drop the legacy 'file' key (already removed
+    # from internal result assembly, but belt-and-suspenders).
+    result["inputs"] = inputs
+    result["compat"] = compat
+    result.pop("file", None)
 
     # Attach project config summary to output for downstream consumers
     project = config.get("project", {})
@@ -9269,7 +9489,20 @@ def main():
     except (ImportError, Exception):
         pass
 
-    if args.lifecycle:
+    # rc.2 4.3 — LC-007 lifecycle-skipped INFO finding. Emit explicitly so
+    # reviewers see "lifecycle audit not run" in the findings list rather
+    # than silently missing it. Fires in three cases:
+    #   1. --lifecycle flag was not passed (most common — high frequency)
+    #   2. --lifecycle passed but no MPNs in BOM
+    #   3. --lifecycle passed but the audit raised an exception
+    _lifecycle_skip_reason: str | None = None
+    if not args.lifecycle:
+        _lifecycle_skip_reason = (
+            "--lifecycle flag not passed (run with --lifecycle to query "
+            "DigiKey / Mouser / LCSC / element14 for obsolescence + "
+            "operating-temp coverage; requires network + API keys)"
+        )
+    else:
         try:
             from lifecycle_audit import audit_bom
             project_dir = str(Path(args.schematic).parent)
@@ -9278,11 +9511,53 @@ def main():
                 result["lifecycle_audit"] = lifecycle
                 print(f"Lifecycle: {lifecycle.get('lifecycle_summary', {})}", file=sys.stderr)
             else:
+                _lifecycle_skip_reason = (
+                    "no components with MPNs to check — populate MPN "
+                    "fields on BOM parts and re-run with --lifecycle"
+                )
                 print("Lifecycle: no components with MPNs to check", file=sys.stderr)
         except ImportError:
+            _lifecycle_skip_reason = "lifecycle_audit.py not found"
             print("Warning: lifecycle_audit.py not found", file=sys.stderr)
         except (OSError, ValueError, TypeError, KeyError) as e:
+            _lifecycle_skip_reason = f"audit raised {type(e).__name__}: {e}"
             print(f"Warning: lifecycle audit failed: {e}", file=sys.stderr)
+
+    if _lifecycle_skip_reason is not None:
+        if 'findings' not in result:
+            result['findings'] = []
+        result['findings'].append({
+            "detector": "audit_lifecycle_skipped",
+            "rule_id": "LC-007",
+            "severity": "info",
+            "confidence": "deterministic",
+            "evidence_source": "topology",
+            "category": "lifecycle",
+            "summary": f"Lifecycle audit not run — {_lifecycle_skip_reason.split(' (')[0]}",
+            "description": (
+                f"Component lifecycle / obsolescence audit was not run "
+                f"this session. Reason: {_lifecycle_skip_reason}. The "
+                f"review cannot report active / NRND / EOL / obsolete "
+                f"status, last-time-buy windows, or operating-temperature "
+                f"coverage for any BOM part. Treat the lifecycle section "
+                f"of the report as 'not performed'."
+            ),
+            "components": [],
+            "nets": [],
+            "pins": [],
+            "recommendation": (
+                "Run with --lifecycle (requires DIGIKEY_CLIENT_ID / "
+                "MOUSER_SEARCH_API_KEY / ELEMENT14_API_KEY env vars; "
+                "LCSC needs no auth) to populate this section. If "
+                "intentionally skipped, note it explicitly in the report's "
+                "'Not Performed' section."
+            ),
+            "report_context": {
+                "section": "Component Lifecycle",
+                "impact": "No obsolescence / temperature-grade evidence available.",
+                "standard_ref": "",
+            },
+        })
 
     # Datasheet verification — cross-check extracted datasheet data against schematic
     try:
@@ -9299,10 +9574,12 @@ def main():
             result["datasheet_verification"] = ds_verify
     except ImportError:
         pass
-    except (OSError, ValueError, TypeError, KeyError) as e:
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:
+        # AttributeError added for rc.3 — defense against future None-leaks
+        # in datasheet_verify.py (see _load_extraction normalization).
         result["datasheet_verification"] = {
             "findings": [],
-            "summary": {"error": str(e)},
+            "summary": {"error": f"{type(e).__name__}: {e}"},
         }
 
     from output_filters import apply_output_filters
@@ -9332,10 +9609,18 @@ def main():
     except (ImportError, Exception):
         pass
 
+    # Guarantee every finding carries a stable finding_id (Layer 2 merge keys
+    # on it). Runs after all filtering/appends; before any output branch.
+    assign_finding_ids(result.get('findings', []), 'schematic')
+
     if args.text:
         from output_filters import format_text
         print(format_text(result.get('findings', []), args.audience or 'designer', args.stage))
         sys.exit(0)
+
+    # Wire capability_mode_ref (Phase 4 spec §3.3). Already resolved early
+    # so inputs.run_id and capability_mode_ref.run_id match.
+    result["capability_mode_ref"] = _capability_mode_ref
 
     indent = None if args.compact else 2
     output = json.dumps(result, indent=indent, default=str)

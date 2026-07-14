@@ -135,7 +135,7 @@
       },
       "category": "Development & Workflow",
       "description": "Agent-native product analytics, error logging, and deploy attribution for coding agents through one HTTP API.",
-      "icon": "./plugins/fr33dr4g0n/agentry-public/assets/icon.png"
+      "icon": "./plugins/fr33dr4g0n/agentry-public/assets/icon.svg"
     },
     {
       "name": "agiflow-ai-plugin",
@@ -328,6 +328,21 @@
       "category": "Development & Workflow",
       "description": "Persistent security case tracking for bug bounties, CTFs, and security audits.",
       "icon": "./plugins/x4cc3/casefile/assets/icon.svg"
+    },
+    {
+      "name": "claude-code",
+      "displayName": "Claude Code Codex Plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/davidq888/claude-code-codex-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Security-focused Codex plugin that connects to the local Claude Code CLI through MCP with login, status checks, safe-mode prompts, and no credential storage.",
+      "icon": "./plugins/davidq888/claude-code-codex-plugin/assets/icon.svg"
     },
     {
       "name": "cc",
@@ -654,6 +669,20 @@
       "icon": "./plugins/ValkyrLabs/GrayMatter/assets/graymatter-logo.png"
     },
     {
+      "name": "hera-godot",
+      "displayName": "Hera Agent Godot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/NotNull92/hera-agent-godot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Drives a live Godot 4.x editor through the low-token Hera CLI — scene, node, and signal edits, play control, and runtime QA with verifiable compact JSON output, with the companion addon published on the official Godot Asset Store."
+    },
+    {
       "name": "hol-guard-plugin",
       "displayName": "HOL Guard Plugin",
       "source": {
@@ -788,6 +817,20 @@
       "description": "Interface understanding and design-system memory for Codex, Claude Code, Cursor, and MCP agents with UI audits, Tailwind token extraction, shadcn registry workflows, and a bundled Codex plugin."
     },
     {
+      "name": "ontoly",
+      "displayName": "Ontoly",
+      "source": {
+        "source": "local",
+        "path": "./plugins/0xsarwagya/ontoly-codex-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Deterministic Software Graph workflows for Codex: architecture review, dependency analysis, request tracing, configuration analysis, and impact analysis."
+    },
+    {
       "name": "odw",
       "displayName": "Open Dynamic Workflows",
       "source": {
@@ -875,7 +918,7 @@
       },
       "category": "Development & Workflow",
       "description": "Agentic PR review: hybrid RAG + code graph via MCP, review skills for Codex.",
-      "icon": "./plugins/mimfort/rag_for_git/assets/icon.svg"
+      "icon": "./plugins/mimfort/rag_for_git/plugin/assets/icon.svg"
     },
     {
       "name": "registry-broker-codex-plugin",

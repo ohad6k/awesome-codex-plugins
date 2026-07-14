@@ -1,6 +1,6 @@
 {
   "name": "rag-reviewer",
-  "version": "0.1.0",
+  "version": "0.3.0+codex.b016c1c6d04b",
   "description": "Agentic PR review: hybrid RAG + code graph via MCP, review skills for Codex",
   "repository": "https://github.com/mimfort/rag_for_git",
   "license": "MIT",
@@ -16,11 +16,10 @@
     "pr-review"
   ],
   "skills": "./plugin/skills/",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "RAG Reviewer",
     "shortDescription": "RAG + code graph PR review pipeline",
-    "longDescription": "Agentic pull request review using hybrid RAG search, code graph analysis, and MCP tools. Supports review-pr, solve-task, sync-tasks, performance-review, and maintainability-review skills.",
+    "longDescription": "Agentic pull request review using hybrid RAG search, code graph analysis, and MCP tools.",
     "developerName": "mimfort",
     "category": "Productivity",
     "capabilities": [
@@ -32,7 +31,7 @@
       "Solve task PRI-4",
       "Sync tasks from the board"
     ],
-    "composerIcon": "./assets/icon.svg",
+    "composerIcon": "./plugin/assets/icon.svg",
     "brandColor": "#3B82F6"
   }
 }

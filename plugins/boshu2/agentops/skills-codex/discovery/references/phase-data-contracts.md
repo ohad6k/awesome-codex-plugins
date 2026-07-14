@@ -7,10 +7,22 @@ How each consolidated phase passes data to the next. Artifacts are filesystem-ba
 | → Discovery | Goal string + repo execution profile contract | Goal from the `/rpi` invocation; repo policy from `docs/contracts/repo-execution-profile.md`, `repo-execution-profile.schema.json`, and `repo-execution-profile.json` when present | `repo_profile` state is loaded before research/planning begins, including validation lane mutation metadata |
 | Discovery → Implementation | Dense execution packet + discovery summary | `.agents/rpi/phase-1-summary-*.md` + `.agents/rpi/execution-packet.json` (latest alias) or `.agents/rpi/runs/<run-id>/execution-packet.json` (run archive). Child outputs cross only as artifact paths. | `/crank <epic-id>` when `epic_id` exists; otherwise `/crank .agents/rpi/execution-packet.json` with density fields, repo policy, criteria, validation bundle, and `validation_lanes` already normalized |
 | Implementation → Validation | Completed/partial crank status + implementation summary + `execution_packet` | `br children <epic-id>` or file-backed implementation state + `.agents/rpi/phase-2-summary.md` + `.agents/rpi/execution-packet.json` (latest alias) or `.agents/rpi/runs/<run-id>/execution-packet.json` (run archive) | `/validate <epic-id>` when `epic_id` exists; otherwise standalone `/validate` with the same repo execution profile fields, validation lanes, and done criteria |
-| Validation → Next Cycle (optional) | Vibe/post-mortem verdicts + harvested follow-up work + queue lifecycle fields (`claim_status`, `claimed_by`, `claimed_at`, `consumed`, `failed_at`) | Latest council reports + `.agents/rpi/next-work.jsonl` | Stop, loop (`--loop`), suggest next `/rpi` (`--spawn-next`), or hand work back to `/evolve` |
+| Validation → Learn | Immutable verdict + structured observations | `.agents/rpi/phase-3-summary.md` plus the verdict artifact | Learn binds the verdict digest and emits `remaining_work` plus `plan_impact` |
+| Learn → Orchestrator | `material_change`, `no_change`, or `terminal` plan impact | `.agents/rpi/phase-4-summary.md` plus the Learn receipt | Only an explicit orchestrator re-plan request may return to Discovery; only an orchestrator-owned changed plan may then enter Premortem |
+
+Discovery writes an honest prospective packet. Set `packet_state` to
+`prospective`; record Discovery as `DONE` with the real phase-1 artifact, Crank
+as `pending`, and Validate/Learn as `not_checked`, with no artifact field on an
+unrun phase. A prospective packet must never fabricate terminal phase success.
+RPI changes `packet_state` to `terminal` only when all four successful receipts
+and their nonempty artifacts exist.
+At the prospective boundary, `skills_loaded` lists only RPI and Discovery, the
+contexts that actually ran. Pending Crank and not-checked Validate/Learn are
+receipt placeholders, not fabricated skill-load evidence.
 
 Execution packet v1 should remain additive. Recommended fields:
 - `schema_version`
+- `packet_state` (`prospective` at Discovery handoff; `terminal` only after Learn)
 - `run_id`
 - `objective`
 - `density.intent`
@@ -21,7 +33,7 @@ Execution packet v1 should remain additive. Recommended fields:
 - `density.next_action`
 - `artifacts.research_path`
 - `artifacts.plan_path`
-- `artifacts.pre_mortem_path`
+- `artifacts.premortem_path`
 - `epic_id` (optional when the tracker cannot mint an epic)
 - `plan_path`
 - `contract_surfaces`
@@ -30,7 +42,7 @@ Execution packet v1 should remain additive. Recommended fields:
 - `tracker_mode`
 - `tracker_health`
 - `done_criteria`
-- `pre_mortem_verdict`
+- `premortem_verdict`
 - `test_levels`
 - `ranked_packet_path`
 
@@ -48,7 +60,7 @@ Validation lane selection rule:
 - unclassified commands containing `go test -race`, `-shuffle`, `-count=N` where `N > 1`, eval runners, retrieval bench, headless runtime smoke, or release gates are explicit-only
 
 Queue lifecycle rule:
-- post-mortem writes new entries as available: entry aggregate `consumed=false`, `claim_status="available"`
+- postmortem writes new entries as available: entry aggregate `consumed=false`, `claim_status="available"`
 - consumers treat item lifecycle as authoritative inside `items[]`; omitted item `claim_status` means available
 - `/evolve` and `/rpi loop` claim an item before starting a cycle: item `claim_status="in_progress"`
 - successful `/rpi` + regression gate finalizes that item claim: item `consumed=true`, `claim_status="consumed"`, `consumed_by`, `consumed_at`
@@ -62,6 +74,6 @@ Canonical schema contract: [`docs/contracts/next-work.schema.md`](../../../docs/
 
 When changing phase-boundary logic, ship phase-3 (closeout) updates FIRST and remove phase-2 (handoff) logic SECOND. This keeps a working closeout path in place during the transition window — if phase-3 ships broken, you can revert before phase-2's removal lands.
 
-Pre-mortem F3 of `soc-bcrn` (`.agents/council/2026-05-07-pre-mortem-rpi-lifecycle-sharpening.md`) called this out as the primary rollback risk for the consolidated daemon epic (E3).
+Premortem F3 of `soc-bcrn` (`.agents/council/2026-05-07-pre-mortem-rpi-lifecycle-sharpening.md`) called this out as the primary rollback risk for the consolidated daemon epic (E3).
 
 Worked example: `cli/cmd/ao/rpi_cleanup.go:preserveWorktreeCommits` (phase-3 commit-preservation logic) was added BEFORE the phase-2 cleanup-removal as part of E3.S3. The order matters: orphaned worktree commits that previously fell into git fsck dangling now land on `codex/preserve-<runID>` branches before the worktree is force-removed. If preservation had been wired in the opposite order, a regression window would have lost commits during the transition.

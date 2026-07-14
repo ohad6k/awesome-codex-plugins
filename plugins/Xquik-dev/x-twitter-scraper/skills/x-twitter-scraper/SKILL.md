@@ -1,15 +1,15 @@
 ---
 name: x-twitter-scraper
-description: "Use when the user needs X (Twitter) data through Xquik: REST API integration, MCP setup, SDK setup, tweet search, user lookup, timeline reads, follower export, media download, monitoring, webhooks, bulk extraction, giveaway draws, or confirmation-gated publishing workflows. Trigger with requests like \"search tweets\", \"export followers\", \"set up Xquik MCP\", or \"monitor this X account\". Read-only by default, API-key only, no X login material, and every write, private read, monitor, webhook, or metered bulk job requires explicit approval."
+description: "Use Xquik for X/Twitter REST, MCP, SDKs, search, exports, monitoring & approved publishing. Not affiliated with X Corp. Trigger for tweet search, user lookup, timelines, follower exports, media, webhooks, bulk extraction, giveaways, or MCP setup. Read-only by default. Require explicit approval for writes, private reads, monitors, webhooks & metered bulk jobs."
 allowed-tools: WebFetch
 argument-hint: "[Xquik task, target, or setup goal]"
-version: "2.4.17"
+version: "2.5.3"
 author: Xquik <support@xquik.com>
 license: MIT
 compatibility: Requires internet access to call the first-party Xquik REST API.
 tags: [twitter, x, social-media, api-development, scraping]
 metadata:
-  version: "2.4.17"
+  version: "2.5.3"
   author: Xquik
   compatibility: Requires internet access to call the first-party Xquik REST API.
   tags: [twitter, x, social-media, api-development, scraping]
@@ -110,6 +110,8 @@ metadata:
 ---
 
 # Xquik X Data Platform
+
+> Xquik is an independent third-party service. Not affiliated with X Corp. "Twitter" and "X" are trademarks of X Corp.
 
 ## Overview
 
@@ -333,7 +335,7 @@ See [api endpoints](references/api-endpoints.md), [draws](references/draws.md), 
 
 ## MCP Server
 
-The MCP endpoint is the `/mcp` route on the first-party Xquik host and uses the same API key.
+The MCP endpoint is the `/mcp` route on the first-party Xquik host. Prefer OAuth 2.1 discovery. Use a scoped API key only when the client cannot complete OAuth.
 
 Available tools:
 

@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
-  "last_updated": "2026-07-12",
-  "total": 163,
+  "last_updated": "2026-07-14",
+  "total": 166,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -230,6 +230,16 @@
       "install_url": "https://raw.githubusercontent.com/x4cc3/casefile/HEAD/.codex-plugin/plugin.json"
     },
     {
+      "name": "Claude Code Codex Plugin",
+      "url": "https://github.com/davidq888/claude-code-codex-plugin",
+      "owner": "davidq888",
+      "repo": "claude-code-codex-plugin",
+      "description": "Security-focused Codex plugin that connects to the local Claude Code CLI through MCP with login, status checks, safe-mode prompts, and no credential storage.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/davidq888/claude-code-codex-plugin/HEAD/plugins/claude-code/.codex-plugin/plugin.json"
+    },
+    {
       "name": "Claude Code for Codex",
       "url": "https://github.com/sendbird/cc-plugin-codex",
       "owner": "sendbird",
@@ -450,6 +460,16 @@
       "install_url": "https://raw.githubusercontent.com/ValkyrLabs/GrayMatter/HEAD/.codex-plugin/plugin.json"
     },
     {
+      "name": "Hera Agent Godot",
+      "url": "https://github.com/NotNull92/hera-agent-godot",
+      "owner": "NotNull92",
+      "repo": "hera-agent-godot",
+      "description": "Drives a live Godot 4.x editor through the low-token Hera CLI — scene, node, and signal edits, play control, and runtime QA with verifiable compact JSON output, with the companion addon published on the official Godot Asset Store.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/NotNull92/hera-agent-godot/HEAD/plugins/hera-godot/.codex-plugin/plugin.json"
+    },
+    {
       "name": "HOL Guard Plugin",
       "url": "https://github.com/hashgraph-online/hol-guard-plugin",
       "owner": "hashgraph-online",
@@ -538,6 +558,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/sarveshsea/memi/HEAD/plugins/memoire/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Ontoly",
+      "url": "https://github.com/0xsarwagya/ontoly-codex-plugin",
+      "owner": "0xsarwagya",
+      "repo": "ontoly-codex-plugin",
+      "description": "Deterministic Software Graph workflows for Codex: architecture review, dependency analysis, request tracing, configuration analysis, and impact analysis.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/0xsarwagya/ontoly-codex-plugin/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "Open Dynamic Workflows",
@@ -777,7 +807,7 @@
       "description": "Agent skills for git workflows, GitHub automation, security audits, code refactoring, and project tooling.",
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
-      "install_url": "https://raw.githubusercontent.com/tartinerlabs/skills/HEAD/.codex-plugin/plugin.json"
+      "install_url": "https://raw.githubusercontent.com/tartinerlabs/skills/HEAD/plugins/tartinerlabs/.codex-plugin/plugin.json"
     },
     {
       "name": "Team Skills Platform",

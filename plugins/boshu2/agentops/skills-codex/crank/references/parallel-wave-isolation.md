@@ -20,7 +20,7 @@ Council brainstorm + judge verdicts: `.agents/council/2026-04-30-brainstorm-cran
 
 ## Tier 1 — Branch isolation prompt rule (every parallel wave ≥ 2)
 
-Inject this rule verbatim at the top of every worker's `spawn_agent(message=...)` text, before the issue body:
+Inject this rule verbatim at the top of every worker's TaskCreate description, before the issue body:
 
 ```
 WORKER GIT DISCIPLINE (parallel wave — read first):
@@ -55,7 +55,10 @@ bash scripts/preflight-swarm.sh "$WAVE_TASK_FILES" || PREFLIGHT_RC=$?
   done
   ```
 
-  Workers in escalated mode operate in their own worktree. Orchestrator removes the worktree at wave-end after the worker's commit + push lands:
+  Workers in escalated mode operate in their own worktree. Crank reports every
+  worktree and preserved result in its handoff. The caller removes a worktree
+  only after independently confirming that its result is preserved; cleanup is
+  not coupled to repository delivery:
 
   ```bash
   for task in $WAVE_TASKS; do

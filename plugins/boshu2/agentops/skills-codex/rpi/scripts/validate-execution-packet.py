@@ -43,6 +43,48 @@ def resolve_artifact(repo_root: Path, value: object, label: str) -> Path:
     return resolved
 
 
+def validate_versioned_alias(
+    container: dict[str, object],
+    version: int,
+    legacy_key: str,
+    canonical_key: str,
+    prefix: str = "",
+    allow_equal_dual: bool = True,
+) -> None:
+    legacy_present = legacy_key in container
+    canonical_present = canonical_key in container
+    if legacy_present and canonical_present:
+        if not allow_equal_dual or container[legacy_key] != container[canonical_key]:
+            fail(
+                "conflicting execution packet fields "
+                f"{prefix}{legacy_key} and {prefix}{canonical_key}"
+            )
+        return
+    if version < 3 and canonical_present:
+        fail(f"schema_version {version} does not own field {prefix}{canonical_key}")
+    if version == 3 and legacy_present:
+        fail(f"schema_version {version} does not own field {prefix}{legacy_key}")
+
+
+def validate_mortem_aliases(packet: dict[str, object]) -> None:
+    version = packet.get("schema_version")
+    if not isinstance(version, int) or isinstance(version, bool) or version not in {1, 2, 3}:
+        return  # The published schema owns the base type/range diagnostic.
+    validate_versioned_alias(
+        packet, version, "pre_mortem_verdict", "premortem_verdict"
+    )
+    artifacts = packet.get("artifacts")
+    if isinstance(artifacts, dict):
+        validate_versioned_alias(
+            artifacts,
+            version,
+            "pre_mortem_path",
+            "premortem_path",
+            "artifacts.",
+            False,
+        )
+
+
 def validate_receipts(packet: dict[str, object], repo_root: Path) -> None:
     loaded = packet.get("skills_loaded")
     if not isinstance(loaded, list) or not loaded:
@@ -60,37 +102,56 @@ def validate_receipts(packet: dict[str, object], repo_root: Path) -> None:
     receipts = packet.get("phase_receipts")
     if not isinstance(receipts, list) or not receipts:
         fail("phase_receipts must be a nonempty array")
-    allowed = {"DONE", "PARTIAL", "BLOCKED", "PASS", "WARN", "FAIL", "REFUTED"}
-    observed_phases: set[str] = set()
-    final_status_by_phase: dict[str, str] = {}
-    for index, receipt in enumerate(receipts):
+    required = [
+        ("discovery", "discovery", "DONE"),
+        ("crank", "crank", "DONE"),
+        ("validate", "validate", "PASS"),
+        ("learn", "learn", "DONE"),
+    ]
+    packet_state = packet.get("packet_state", "terminal")
+    if packet_state not in {"prospective", "terminal"}:
+        fail("packet_state must be prospective or terminal")
+    if len(receipts) != len(required):
+        fail("phase_receipts must contain discovery, crank, validate, learn in order")
+    for index, (receipt, expected) in enumerate(zip(receipts, required)):
         if not isinstance(receipt, dict):
             fail(f"phase_receipts[{index}] must be an object")
         phase = require_nonempty(receipt.get("phase"), f"phase_receipts[{index}].phase")
-        observed_phases.add(phase)
         skill = require_nonempty(receipt.get("skill"), f"phase_receipts[{index}].skill")
-        if skill not in loaded_names:
-            fail(f"phase_receipts[{index}].skill is absent from skills_loaded")
         status = require_nonempty(receipt.get("status"), f"phase_receipts[{index}].status")
-        if status not in allowed:
-            fail(f"phase_receipts[{index}].status is not a recognized verdict")
-        final_status_by_phase[phase] = status
-        resolve_artifact(repo_root, receipt.get("artifact"), f"phase_receipts[{index}].artifact")
+        expected_phase, expected_skill, expected_status = expected
+        if (phase, skill) != (expected_phase, expected_skill):
+            fail(
+                f"phase_receipts[{index}] must be phase {expected_phase} "
+                f"with skill {expected_skill}"
+            )
+        if packet_state == "terminal":
+            if skill not in loaded_names:
+                fail(f"phase_receipts[{index}].skill is absent from skills_loaded")
+            if status != expected_status:
+                fail(
+                    "terminal phase_receipts must be successful; "
+                    f"phase_receipts[{index}].status {status}, want {expected_status}"
+                )
+            resolve_artifact(repo_root, receipt.get("artifact"), f"phase_receipts[{index}].artifact")
+            continue
 
-    required_phases = {"discovery", "implementation", "validation"}
-    missing = sorted(required_phases - observed_phases)
-    if missing:
-        fail(f"phase_receipts missing required lifecycle phases: {', '.join(missing)}")
-
-    successful_statuses = {
-        "discovery": {"DONE"},
-        "implementation": {"DONE"},
-        "validation": {"PASS"},
-    }
-    for phase, successful in successful_statuses.items():
-        status = final_status_by_phase[phase]
-        if status not in successful:
-            fail(f"final {phase} receipt status {status} is not successful")
+        prospective_statuses = ["DONE", "pending", "not_checked", "not_checked"]
+        expected_prospective = prospective_statuses[index]
+        if status != expected_prospective:
+            fail(
+                "prospective phase_receipts must record only Discovery success; "
+                f"phase_receipts[{index}].status {status}, want {expected_prospective}"
+            )
+        if index == 0:
+            if skill not in loaded_names:
+                fail(f"phase_receipts[{index}].skill is absent from skills_loaded")
+            resolve_artifact(repo_root, receipt.get("artifact"), f"phase_receipts[{index}].artifact")
+        else:
+            if skill in loaded_names:
+                fail(f"prospective skills_loaded must omit unrun phase skill: {skill}")
+            if "artifact" in receipt:
+                fail(f"prospective phase_receipts[{index}] must omit artifact for an unrun phase")
 
 
 def main() -> int:
@@ -106,13 +167,9 @@ def main() -> int:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         if not isinstance(packet, dict):
             fail("execution packet must be a JSON object")
+        validate_mortem_aliases(packet)
         validate_receipts(packet, repo_root)
-        core_packet = {
-            key: value
-            for key, value in packet.items()
-            if key not in {"skills_loaded", "phase_receipts"}
-        }
-        Draft202012Validator(schema, format_checker=FormatChecker()).validate(core_packet)
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(packet)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"invalid execution packet: {exc}", file=sys.stderr)
         return 1
@@ -120,7 +177,8 @@ def main() -> int:
         print(f"invalid execution packet: {exc}", file=sys.stderr)
         return 1
 
-    print(f"valid execution packet: {packet_path}")
+    packet_state = packet.get("packet_state", "terminal")
+    print(f"valid {packet_state} execution packet: {packet_path}")
     return 0
 
 

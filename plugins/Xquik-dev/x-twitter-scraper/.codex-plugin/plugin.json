@@ -1,7 +1,7 @@
 {
   "name": "x-twitter-scraper",
-  "version": "2.4.17",
-  "description": "Xquik X Twitter scraper API skill and X API alternative for tweet search, follower export, social listening, MCP, SDKs, webhooks, exports, 33x cheaper tweet reads, and gated actions.",
+  "version": "2.5.3",
+  "description": "Xquik agent skill & plugin bundle. Not affiliated with X Corp. Includes 126 REST operations, 118 MCP operations through 2 tools, SDKs, webhooks, exports & approved X workflows.",
   "author": {
     "name": "Xquik",
     "url": "https://github.com/Xquik-dev"
@@ -37,8 +37,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "X Twitter Scraper",
-    "shortDescription": "Use Xquik for X data, MCP, SDKs, exports, and gated actions",
-    "longDescription": "Use the X Twitter Scraper skill to guide agents through Xquik REST API, MCP, SDK, webhook, extraction, monitoring, export, social listening, follower export, high-throughput read, 33x cheaper tweet-read workflows, and confirmation-gated action workflows for X data automation.",
+    "shortDescription": "Use Xquik for X data, MCP, SDKs, and gated actions. Not affiliated with X Corp.",
+    "longDescription": "Use the X Twitter Scraper skill to guide agents through 126 Xquik REST operations, 118 MCP operations through 2 tools, SDKs, webhooks, extractions, monitoring, exports, and confirmation-gated actions. Not affiliated with X Corp.",
     "developerName": "Xquik",
     "category": "Productivity",
     "composerIcon": "./assets/icon.svg",

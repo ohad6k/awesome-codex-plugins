@@ -37,8 +37,13 @@ from kicad_utils import (is_ground_name, is_power_net_name,
                          extract_pro_design_rules, extract_pro_text_variables,
                          load_kicad_dru, load_lib_tables)
 from pcb_connectivity import build_connectivity_graph
-from finding_schema import compute_trust_summary, sort_findings
+from finding_schema import compute_trust_summary, sort_findings, assign_finding_ids
+from envelopes.pcb import PCBEnvelope
+from schema_codec import emit_schema
+from inputs_builder import build_inputs, build_compat
+from capability_mode import get_capability_mode_ref
 
+ANALYZER_SOURCE = "pcb"
 
 # ---------------------------------------------------------------------------
 # Geometry helpers
@@ -609,9 +614,12 @@ def extract_footprints(root: list) -> list[dict]:
             for ft in find_all(fp, "fp_text"):
                 if len(ft) >= 3:
                     if ft[1] == "reference":
-                        ref = ft[2]
+                        # Some footprints have no text after the field name —
+                        # ft[2] is then an attribute s-expression, not a string.
+                        # Coerce to empty string in that case (KH-326).
+                        ref = ft[2] if isinstance(ft[2], str) else ""
                     elif ft[1] == "value":
-                        value = ft[2]
+                        value = ft[2] if isinstance(ft[2], str) else ""
 
         mpn = get_property(fp, "MPN") or get_property(fp, "Mfg Part") or ""
 
@@ -1191,6 +1199,11 @@ def _extract_keepout_zones(zones: list[dict],
             'restrictions': z.get('keepout', {}),
             'bounding_box': bbox,
             'area_mm2': z.get('outline_area_mm2', 0),
+            # Net the keepout is associated with — items on this net are
+            # ALLOWED inside the keepout (KiCad rule-area semantic). 0 / ""
+            # means "no specific net" → keepout applies to all items.
+            'net': z.get('net', 0),
+            'net_name': z.get('net_name', ''),
         }
         # Find footprints near this keepout zone
         if bbox and len(bbox) == 4:
@@ -1363,6 +1376,11 @@ def extract_board_outline(root: list) -> dict:
         "edge_count": len(edges),
         "edges": edges,
         "bounding_box": bbox,
+        # Convenience aliases so consumers don't have to reach into bounding_box.
+        # bbox already accounts for arc extrema (see EQ-100 above), so these are
+        # correct on arc-edge outlines too; None only when no Edge.Cuts geometry.
+        "width_mm": bbox["width"] if bbox else None,
+        "height_mm": bbox["height"] if bbox else None,
     }
 
 
@@ -3392,6 +3410,43 @@ def _is_rf_module(fp: dict) -> bool:
     return False
 
 
+# Edge-mount footprint categories: by-design at the board edge — PM-002 edge
+# clearance should demote to info (not warning/error) for these. rc.2 4.1
+# expansion (SparkFun review).
+_EDGE_MOUNT_LIBRARY_KEYWORDS = (
+    'SMA_Edge',                           # edge-launch SMA antenna connectors
+    'USB_C_Receptacle',                   # vertical/board-edge USB-C
+    'USB_Mini', 'USB_Micro',              # board-edge USB Mini/Micro
+    'USB_A_Vertical', 'USB_B_Vertical',
+    'MagJack',                            # RJ45 with integrated mag — by-edge
+    'microSD', 'SD_Card',                 # microSD/SD card edge sockets
+    'BarrelJack',                         # DC barrel jack at edge
+    'Standoff', 'Mounting',               # mounting features near edge are intentional
+    'TerminalBlock',                      # screw terminals at board edge
+    'Phoenix_MSTB',                       # Phoenix MSTB/MSTBA/MSTBVA terminal-block family (F8)
+    'JST_', 'Molex_PicoBlade',            # edge-launched JST/Molex wire-to-board
+)
+_EDGE_MOUNT_VALUE_KEYWORDS = (
+    'EDGE', 'VERTICAL',                   # value-string hints
+)
+
+
+def _is_edge_mount_footprint(fp: dict) -> bool:
+    """Return True if the footprint is designed to sit at the board edge
+    (board-edge connector, edge-launch antenna, mounting hole, etc.).
+    PM-002 demotes edge-clearance findings to info for these.
+    """
+    library = fp.get('library', '') or fp.get('footprint', '') or ''
+    value = fp.get('value', '') or ''
+    for kw in _EDGE_MOUNT_LIBRARY_KEYWORDS:
+        if kw.lower() in library.lower():
+            return True
+    for kw in _EDGE_MOUNT_VALUE_KEYWORDS:
+        if kw in value.upper():
+            return True
+    return False
+
+
 def analyze_placement(footprints: list[dict], outline: dict) -> dict:
     """Component placement analysis — courtyard overlaps and edge clearance.
 
@@ -3446,7 +3501,7 @@ def analyze_placement(footprints: list[dict], outline: dict) -> dict:
                     "confidence": "deterministic",
                     "evidence_source": "topology",
                     "summary": f"Courtyard overlap between {fp_a['reference']} and {fp_b['reference']} ({overlap_mm2}mm\u00b2){rf_note}",
-                    "description": f"Components {fp_a['reference']} and {fp_b['reference']} have overlapping courtyards on {fp_a['layer']} ({overlap_mm2}mm\u00b2 overlap area).",
+                    "description": f"Components {fp_a['reference']} and {fp_b['reference']} have overlapping courtyards on {fp_a['layer']} ({overlap_mm2}mm\u00b2 overlap area). Threshold: \u22651.0mm\u00b2 = error, else warning; RF-module overlaps demote to info (courtyard encodes RF keepout).",
                     "components": [fp_a["reference"], fp_b["reference"]],
                     "nets": [],
                     "pins": [],
@@ -3487,12 +3542,19 @@ def analyze_placement(footprints: list[dict], outline: dict) -> dict:
                 clearance = round(min_edge, 2)
                 # RF module footprints deliberately put the courtyard past the
                 # board edge to expose the antenna to free space (WROOM-1 etc.).
-                # Downgrade the edge-clearance finding to info with a note.
+                # Edge-mount footprints (SMA_Edge, USB_C vertical, MagJack,
+                # microSD, BarrelJack, mounting holes, etc.) belong at the
+                # board edge by design. Both demote the edge-clearance finding
+                # to info with a hint.
                 is_rf = _is_rf_module(fp)
+                is_edge_mount = _is_edge_mount_footprint(fp)
                 if is_rf:
                     severity = 'info'
                     rf_suffix = (' (RF module antenna at board edge — '
                                  'verify antenna clearance, not a body collision)')
+                elif is_edge_mount:
+                    severity = 'info'
+                    rf_suffix = (' (edge-mount footprint — by-design at board edge)')
                 elif clearance < 0.5:
                     severity = 'error'
                     rf_suffix = ''
@@ -5121,6 +5183,15 @@ def analyze_thermal_pad_vias(footprints: list[dict], vias: dict,
     return results
 
 
+# Generic-passive reference designators (C, R, L, FB + digits, optionally
+# with a hierarchical sheet prefix like "U1/C5"). F10: CP-002 skips these
+# because on a 2-layer board with a GND pour every decoupling cap's VCC
+# pad is "uncovered" — that's expected, not a finding. Components on real
+# touch / antenna pads use TP-prefixed refs or non-passive libraries and
+# are surfaced via CP-003.
+_PASSIVE_REF_RE = re.compile(r"^([A-Za-z0-9_]+/)?(C|R|L|FB)\d+$")
+
+
 def analyze_copper_presence(footprints: list[dict], zones: list[dict],
                             zone_fills: ZoneFills,
                             ref_layer_map: dict[str, str] | None = None) -> dict:
@@ -5279,31 +5350,39 @@ def analyze_copper_presence(footprints: list[dict], zones: list[dict],
         "opposite_layer_summary": opp_summary,
     }
 
-    # The interesting signal: components WITHOUT opposite-layer copper
+    # The interesting signal: components WITHOUT opposite-layer copper.
+    # F10: emit CP-002 findings only for non-passive references — on a
+    # 2-layer board with a GND pour on the opposite side, every decoupling
+    # cap's VCC pad would otherwise fire CP-002, drowning the info tier.
+    # Actual touch-sensitive / RF components are still surfaced via CP-003.
+    # The summary list (`no_opposite_layer_copper`) keeps everything so
+    # consumers that want the raw uncovered set still have it.
     if opp_uncovered:
         result["no_opposite_layer_copper"] = sorted(opp_uncovered)
-        result["no_opposite_layer_copper_findings"] = [{
-            "component": _ref,
-            "detector": "analyze_copper_presence",
-            "rule_id": "CP-002",
-            "category": "copper_integrity",
-            "severity": "info",
-            "confidence": "deterministic",
-            "evidence_source": "geometry",
-            "summary": f"No opposite-layer copper under {_ref}",
-            "description": (
-                f"Component {_ref} has no copper zone on the opposite layer."
-            ),
-            "components": [_ref],
-            "nets": [],
-            "pins": [],
-            "recommendation": "",
-            "report_context": {
-                "section": "Copper Integrity",
-                "impact": "Return path / shielding",
-                "standard_ref": "",
-            },
-        } for _ref in sorted(opp_uncovered)]
+        cp_002_refs = [r for r in opp_uncovered if not _PASSIVE_REF_RE.match(r)]
+        if cp_002_refs:
+            result["no_opposite_layer_copper_findings"] = [{
+                "component": _ref,
+                "detector": "analyze_copper_presence",
+                "rule_id": "CP-002",
+                "category": "copper_integrity",
+                "severity": "info",
+                "confidence": "deterministic",
+                "evidence_source": "geometry",
+                "summary": f"No opposite-layer copper under {_ref}",
+                "description": (
+                    f"Component {_ref} has no copper zone on the opposite layer."
+                ),
+                "components": [_ref],
+                "nets": [],
+                "pins": [],
+                "recommendation": "",
+                "report_context": {
+                    "section": "Copper Integrity",
+                    "impact": "Return path / shielding",
+                    "standard_ref": "",
+                },
+            } for _ref in sorted(cp_002_refs)]
 
     if foreign_zone_details:
         result["same_layer_foreign_zones"] = foreign_zone_details
@@ -5885,6 +5964,12 @@ def analyze_keepout_violations(footprints: list[dict], vias: dict,
         restrictions = kz.get("restrictions", {})
         kz_name = kz.get("name", "unnamed")
         kz_layers = kz.get("layers", [])
+        # KiCad rule-area "allowed net" — items on this net are ALLOWED
+        # inside the keepout (e.g., an antenna keepout that excludes copper
+        # except the antenna's own net). 0 / "" / None means "no exemption,
+        # restrict all items". rc.2 4.1 expansion (SparkFun review).
+        kz_allowed_net_id = kz.get("net") or 0
+        kz_allowed_net_name = kz.get("net_name") or ""
 
         # Check footprints
         if restrictions.get("footprints", False):
@@ -5896,10 +5981,25 @@ def analyze_keepout_violations(footprints: list[dict], vias: dict,
                 if not any(l in kz_layers or l == "*" or "*.Cu" in kz_layers for l in [fp_layer]):
                     continue
                 if kx1 <= fx <= kx2 and ky1 <= fy <= ky2:
+                    # Net exclusion: if any pad of this footprint is on the
+                    # keepout's allowed net, the footprint is permitted here.
+                    if kz_allowed_net_name:
+                        fp_nets = fp.get("connected_nets", []) or list(
+                            (fp.get("pad_nets") or {}).values())
+                        # pad_nets values are dicts with 'net' key; connected_nets is strings
+                        fp_net_names = set()
+                        for n in fp_nets:
+                            if isinstance(n, str):
+                                fp_net_names.add(n)
+                            elif isinstance(n, dict) and n.get("net"):
+                                fp_net_names.add(n["net"])
+                        if kz_allowed_net_name in fp_net_names:
+                            continue
                     findings.append({
                         "component": ref,
                         "keepout_name": kz_name,
                         "keepout_layers": kz_layers,
+                        "keepout_allowed_net": kz_allowed_net_name,
                         "detector": "analyze_keepout_violations",
                         "rule_id": "KO-001",
                         "category": "placement",
@@ -5923,10 +6023,18 @@ def analyze_keepout_violations(footprints: list[dict], vias: dict,
                 if vx is None or vy is None:
                     continue
                 if kx1 <= vx <= kx2 and ky1 <= vy <= ky2:
+                    # Net exclusion: a via on the keepout's allowed net is
+                    # permitted (e.g., an antenna trace's tuning via inside
+                    # the antenna keepout).
+                    if kz_allowed_net_id:
+                        via_net_id = via.get("net")
+                        if via_net_id == kz_allowed_net_id:
+                            continue
                     findings.append({
                         "via_x": round(vx, 2),
                         "via_y": round(vy, 2),
                         "keepout_name": kz_name,
+                        "keepout_allowed_net": kz_allowed_net_name,
                         "detector": "analyze_keepout_violations",
                         "rule_id": "KO-001",
                         "category": "placement",
@@ -6154,8 +6262,7 @@ def analyze_pcb(path: str, *, proximity: bool = False,
 
     result = {
         "analyzer_type": "pcb",
-        "schema_version": "1.3.0",
-        "file": str(path),
+        "schema_version": "1.4.0",
         "kicad_version": generator_version,
         "file_version": version,
         "statistics": stats,
@@ -6186,8 +6293,8 @@ def analyze_pcb(path: str, *, proximity: bool = False,
 
     if pad_distances:
         result["pad_to_pad_distances"] = pad_distances
-    if power_routing:
-        result["power_net_routing"] = power_routing
+    # TH-043-residual: always emit (schema-required); empty list when no power routing.
+    result["power_net_routing"] = power_routing if power_routing else []
     if decoupling:
         result["decoupling_placement"] = decoupling
         # Flat decoupling proximity matrix for EMC/cross-verify consumers
@@ -6210,8 +6317,8 @@ def analyze_pcb(path: str, *, proximity: bool = False,
         if loop_areas:
             result["switching_loop_areas"] = loop_areas
 
-    if ground_domains["domain_count"] > 0:
-        result["ground_domains"] = ground_domains
+    # TH-043-residual: always emit (schema-required); domain_count=0 is meaningful info.
+    result["ground_domains"] = ground_domains
     if current_capacity["power_ground_nets"] or current_capacity["narrow_signal_nets"]:
         result["current_capacity"] = current_capacity
     if thermal["zone_stitching"] or thermal["thermal_pads"]:
@@ -6226,9 +6333,10 @@ def analyze_pcb(path: str, *, proximity: bool = False,
     if proximity:
         result["trace_proximity"] = analyze_trace_proximity(tracks, net_names)
 
-    # New extraction sections — always include if non-empty
-    if metadata:
-        result["board_metadata"] = metadata
+    # board_metadata + design_rule_compliance are required envelope keys
+    # (schema declares them dict not Optional[dict]). Always emit, even
+    # when empty, so schema-vs-emit drift can't surface (TH-043).
+    result["board_metadata"] = metadata or {}
     if dimensions:
         result["dimensions"] = dimensions
     if groups:
@@ -6238,12 +6346,14 @@ def analyze_pcb(path: str, *, proximity: bool = False,
     if project_settings:
         result["project_settings"] = project_settings
 
-    # Design rule compliance (project rules vs actual layout)
+    # Design rule compliance (project rules vs actual layout) — always emit
+    # at least an empty dict so the schema-required key is present.
     if project_settings:
         design_compliance = analyze_design_rule_compliance(
             tracks, vias, project_settings)
-        if design_compliance:
-            result["design_rule_compliance"] = design_compliance
+        result["design_rule_compliance"] = design_compliance or {}
+    else:
+        result["design_rule_compliance"] = {}
 
     # Manufacturing and assembly analysis
     if dfm:
@@ -6350,8 +6460,8 @@ def analyze_pcb(path: str, *, proximity: bool = False,
     if placement:
         findings.extend(placement.get('courtyard_overlaps', []))
         findings.extend(placement.get('edge_clearance_warnings', []))
-        if placement.get('density'):
-            result['placement_density'] = placement['density']
+    # TH-043-residual: always emit (schema-required); empty dict when placement/density missing.
+    result['placement_density'] = (placement or {}).get('density') or {}
 
     thermal_sec = result.pop('thermal_analysis', None)
     if thermal_sec:
@@ -6389,6 +6499,7 @@ def analyze_pcb(path: str, *, proximity: bool = False,
     sort_findings(findings)
 
     result['findings'] = findings
+    result['assessments'] = []
     result['trust_summary'] = compute_trust_summary(findings)
 
     # Build summary
@@ -6403,60 +6514,6 @@ def analyze_pcb(path: str, *, proximity: bool = False,
     }
 
     return result
-
-
-def _get_schema():
-    """Return JSON output schema description for --schema flag."""
-    return {
-        "analyzer_type": "string — always 'pcb'",
-        "schema_version": "string — semver (currently '1.3.0')",
-        "summary": {"total_findings": "int", "by_severity": {"error": "int", "warning": "int", "info": "int"}},
-        "trust_summary": {
-            "total_findings": "int",
-            "trust_level": "string — 'high' | 'mixed' | 'low'",
-            "by_confidence": "{deterministic: int, heuristic: int, datasheet-backed: int}",
-            "by_evidence_source": "{datasheet|topology|heuristic_rule|symbol_footprint|bom|geometry|api_lookup: int}",
-            "provenance_coverage_pct": "float",
-        },
-        "findings": "[{detector, rule_id, severity, confidence, evidence_source, summary, category, components, nets, pins, recommendation, ...}] — flat list of all findings",
-        "file": "string — input file path",
-        "kicad_version": "string", "file_version": "string",
-        "statistics": {
-            "footprint_count": "int", "front_side": "int", "back_side": "int",
-            "smd_count": "int", "tht_count": "int", "copper_layers_used": "int",
-            "copper_layer_names": "[string]", "track_segments": "int", "via_count": "int",
-            "zone_count": "int", "total_track_length_mm": "float",
-            "board_width_mm": "float|null", "board_height_mm": "float|null",
-            "net_count": "int", "routing_complete": "bool", "unrouted_net_count": "int",
-        },
-        "layers": "[{name, type, index: int}]",
-        "setup": "object — design rules, pad_to_mask_clearance, etc.",
-        "nets": "{str(net_id): net_name}",
-        "net_name_to_id": "{net_name: int (net ID)} — reverse of nets",
-        "board_outline": {
-            "bounding_box": "{x_min, y_min, x_max, y_max, width, height: float}",
-            "outline_type": "string (rectangle|complex_polygon|...)",
-            "segments": "[{x1, y1, x2, y2: float, layer}]",
-        },
-        "component_groups": "{prefix: {count: int, type, examples: [ref]}}",
-        "footprints": "[{reference, value, library (lib:footprint path), footprint (alias of library), layer, x: float, y: float, angle: float, type: smd|through_hole|mixed, mpn, manufacturer, description, exclude_from_bom: bool, exclude_from_pos: bool, dnp: bool, pad_nets: {pad_number: {net: string, pin: string}}, connected_nets: [string]}]",
-        "tracks": {
-            "segment_count": "int", "arc_count": "int",
-            "width_distribution": "{width_mm_str: count}",
-            "layer_distribution": "{layer_name: count}",
-            "_with_full_flag": "segments: [{x1, y1, x2, y2, width: float, layer, net: int}], arcs: [{x1, y1, x2, y2, mid_x, mid_y, width: float, layer}]",
-        },
-        "vias": {
-            "count": "int", "size_distribution": "{size_str: count}",
-            "_analysis": "via_in_pad: [ref], via_fanout: {ref: {via_count, fanout_traces}}, via_current: [warning]",
-            "_with_full_flag": "vias: [{x, y: float, layers: [string], size, drill: float, net: int|null, type: 'through|blind|buried|micro'}]",
-        },
-        "zones": "[{net: int (net ID), net_name: string (net name), priority: int, layers: [string], bounding_box, island_count: int, thermal_bridging, filled: bool, is_keepout: bool (opt), keepout: {tracks, vias, pads, copperpour, footprints} (opt)}]",
-        "keepout_zones": "[{name, layers: [string], restrictions: {tracks, vias, pads, copperpour, footprints}, bounding_box: [min_x, min_y, max_x, max_y], area_mm2: float, nearby_components: [string]}]",
-        "connectivity": {"routing_complete": "bool", "unrouted_count": "int", "unconnected_pads": "[{reference, pad, expected_net}]"},
-        "net_lengths": "{net_name: {track_length_mm: float, via_count: int, layer_transitions: int}}",
-        "_optional_sections": "power_net_routing, decoupling_placement, ground_domains, current_capacity, thermal_analysis, placement_analysis, trace_proximity (--proximity), dfm, tombstoning_risk, thermal_pad_vias, copper_presence",
-    }
 
 
 def main():
@@ -6490,11 +6547,13 @@ def main():
                         help='Radius (mm) for copper-presence in return-path analysis (default: 0.5)')
     parser.add_argument('--gp001-debug', action='store_true',
                         help='Emit per-sample diagnostic JSON to analysis dir')
+    parser.add_argument('--only-deterministic', action='store_true',
+                        help='Accepted for consistency; analyzers never write llm_* fields. '
+                             'Honored by downstream consumers (Phase 4 spec §3.4).')
     args = parser.parse_args()
 
     if args.schema:
-        print(json.dumps(_get_schema(), indent=2))
-        sys.exit(0)
+        emit_schema(PCBEnvelope)
 
     if not args.pcb:
         parser.error("the following arguments are required: pcb")
@@ -6521,6 +6580,33 @@ def main():
     except ImportError:
         config = {"version": 1, "project": {}, "suppressions": []}
 
+    # Build inputs provenance block (Track 1.3).
+    # Resolve canonical analysis_dir ONCE (used for capability_mode_ref).
+    # Includes --analysis-dir, fixing audit Highest-Risk #4 (split with output).
+    if args.analysis_dir:
+        _analysis_dir = Path(args.analysis_dir)
+    elif args.output:
+        _analysis_dir = Path(args.output).parent
+    else:
+        _analysis_dir = Path("analysis")
+
+    # Resolve capability_mode_ref BEFORE build_inputs so inputs.run_id ==
+    # capability_mode_ref.run_id (audit Highest-Risk #5).
+    _capability_mode_ref = get_capability_mode_ref(_analysis_dir)
+
+    _pcb_path = Path(args.pcb)
+    if args.config:
+        _cfg_path = Path(args.config) if Path(args.config).is_file() else None
+    else:
+        _default_cfg = _pcb_path.parent / ".kicad-happy.json"
+        _cfg_path = _default_cfg if _default_cfg.is_file() else None
+    inputs = build_inputs(
+        source_files=[_pcb_path],
+        config_path=_cfg_path,
+        run_id=_capability_mode_ref["run_id"],
+    )
+    compat = build_compat()
+
     schematic_data = None
     if args.schematic:
         try:
@@ -6541,6 +6627,11 @@ def main():
                          schematic_data=schematic_data,
                          return_path_radius_mm=args.return_path_radius_mm,
                          gp001_debug=args.gp001_debug)
+    # Inject provenance and drop legacy 'file' key (already removed from
+    # internal result assembly, but belt-and-suspenders).
+    result["inputs"] = inputs
+    result["compat"] = compat
+    result.pop("file", None)
 
     # GP-001 debug: write per-sample diagnostics to disk and strip from output
     gp001_debug_data = result.pop("_gp001_debug_samples", None)
@@ -6598,10 +6689,18 @@ def main():
     from output_filters import apply_output_filters
     apply_output_filters(result, args.stage, args.audience)
 
+    # Guarantee every finding carries a stable finding_id (Layer 2 merge keys
+    # on it). Runs after all filtering; before any output branch.
+    assign_finding_ids(result.get('findings', []), 'pcb')
+
     if args.text:
         from output_filters import format_text
         print(format_text(result.get('findings', []), args.audience or 'designer', args.stage))
         sys.exit(0)
+
+    # Wire capability_mode_ref (Phase 4 spec §3.3).
+    # capability_mode_ref already resolved early — reuse to keep run_id stable.
+    result["capability_mode_ref"] = _capability_mode_ref
 
     indent = None if args.compact else 2
     output = json.dumps(result, indent=indent, default=str)

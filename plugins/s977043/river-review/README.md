@@ -236,7 +236,7 @@ jobs:
 
 <!-- x-release-please-start-version -->
 
-最新リリース: [v1.55.0](https://github.com/s977043/river-review/releases/latest)
+最新リリース: [v1.56.0](https://github.com/s977043/river-review/releases/latest)
 
 <!-- x-release-please-end -->
 
@@ -628,7 +628,7 @@ severity: minor
 - Instruction text for the reviewer goes here.
 ```
 
-- サンプル: `skills/upstream/architecture-sample/SKILL.md`, `skills/midstream/code-quality-sample/SKILL.md`, `skills/downstream/test-review-sample/SKILL.md`
+- サンプル: `examples/skills/` 配下の 3 スキル（参考用。レビュー実行では選択されない。詳細は `examples/skills/README.md`）
 - examples: `examples/README.md`
 - スキーマ: スキルメタデータは `schemas/skill.schema.json`, レビュー出力は `schemas/output.schema.json`
 - 参考: スキルスキーマの詳細は `pages/reference/skill-schema-reference.md`、Riverbed Memory の設計ドラフトは `pages/explanation/riverbed-memory.md`

@@ -1,90 +1,63 @@
-# Gate and Retry Logic
+# Repair and Retry Logic
 
-Detailed retry behavior for each gated phase. All gates use a max-3-attempts pattern (1 initial + 2 retries).
+Retries are orchestrator decisions. Phase skills emit evidence and stop at
+their boundary; none converts its own result into a cross-phase retry.
 
-## Pre-mortem Gate (Phase 3)
+## Premortem repair
 
-Extract verdict from council report:
+Premortem judges a plan. WARN or FAIL returns that plan to its author for a
+bounded repair and another Premortem. Between waves, the input must be an exact
+changed plan from an explicit orchestrator request. Validate and Learn cannot
+invoke Premortem.
 
-```bash
-REPORT=$(ls -t .agents/council/*pre-mortem*.md 2>/dev/null | head -1)
-```
+## Crank recovery
 
-Read the report file and find the verdict line (`## Council Verdict: PASS / WARN / FAIL`).
+Crank preserves transient worker failure evidence and returns DONE, PARTIAL,
+or BLOCKED at the wave boundary. It owns no retry allowance or task budget; a
+later action requires an explicit orchestrator decision and durable admission
+from the persistent governor. Crank does not invoke Discovery, Learn, or
+Premortem.
 
-Gate logic:
-- **PASS:** Auto-proceed. Log: "Pre-mortem: PASS"
-- **WARN:** Auto-proceed. Log: "Pre-mortem: WARN -- see report for concerns"
-- **FAIL:** Retry loop (max 2 retries):
-  1. Read the full pre-mortem report to extract specific failure reasons
-  1a. Extract ALL findings with structured fields (group by category if >20):
-      ```
-      For each finding, extract:
-        FINDING: <description> | FIX: <fix or recommendation> | REF: <ref or location>
+## Post-verdict decision
 
-      Fallback for v1 findings: fix = finding.fix || finding.recommendation || "No fix specified"
-                                 ref = finding.ref || finding.location || "No reference"
-      ```
-  2. Log: "Pre-mortem: FAIL (attempt N/3) -- retrying plan with feedback"
-  3. Re-invoke `$plan` with the goal AND the failure context including structured findings:
-     ```
-     $plan <goal> --auto --context 'Pre-mortem FAIL: <key concerns>\nStructured findings:\nFINDING: X | FIX: Y | REF: Z\nFINDING: A | FIX: B | REF: C'
-     ```
-  4. Re-invoke `$pre-mortem` on the new plan
-  5. If still FAIL after 3 total attempts, stop with message:
-     "Pre-mortem failed 3 times. Last report: <path>. Manual intervention needed."
+The required sequence is `Validate -> Learn -> orchestrator`:
 
-Store verdict in `rpi_state.verdicts.pre_mortem`.
+1. Validate emits an immutable PASS, WARN, or FAIL verdict with structured
+   observations.
+2. Learn binds the verdict digest and emits `remaining_work` plus exactly one
+   plan-impact disposition:
+   - `material_change`;
+   - `no_change`;
+   - `terminal`.
+3. The orchestrator chooses the next action:
+   - material change with remaining work: Discovery changes the remaining plan,
+     then Premortem judges that exact changed plan;
+   - no change with remaining work: retry, continue, stop, or escalate
+     explicitly;
+   - terminal: close without re-plan or Premortem.
 
-## Implementation Gate (Phase 2)
+A direct `validate -> crank`, `validate -> premortem`, or
+`learn -> premortem` transition is invalid. Retry history stays in evidence;
+the ordered completion packet still carries one receipt per umbrella.
 
-Check completion status from crank's output. Look for `<promise>` tags:
+## Stuckness and escalation
 
-- **`<promise>DONE</promise>`:** Proceed to Validation (Phase 3)
-- **`<promise>BLOCKED</promise>`:** Retry (max 2 retries):
-  1. Read crank output to extract block reason
-  2. Log: "Crank: BLOCKED (attempt N/3) -- retrying with context"
-  3. Re-invoke `$crank` with epic-id and block context (include `--test-first` by default; omit only when `--no-test-first` is set)
-  4. If still BLOCKED after 3 total attempts, stop with message:
-     "Crank blocked 3 times. Reason: <reason>. Manual intervention needed."
-- **`<promise>PARTIAL</promise>`:** Retry remaining (max 2 retries):
-  1. Read crank output to identify remaining items
-  2. Log: "Crank: PARTIAL (attempt N/3) -- retrying remaining items"
-  3. Re-invoke `$crank` with epic-id (it picks up unclosed issues; include `--test-first` by default; omit only when `--no-test-first` is set)
-  4. If still PARTIAL after 3 total attempts, stop with message:
-     "Crank partial after 3 attempts. Remaining: <items>. Manual intervention needed."
+Max-attempts, oscillation, and no-progress evidence are stuckness signals, not
+proof that human authority is required. The orchestrator submits them to the
+persistent governor. `HOLD` carries the matching blocker class and is the only
+state that authorizes a helper; `UNSTUCK` returns a new approach as `REPAIR`,
+and `ESCALATE` reaches `ANDON`. Explicit judgment or a positive projected
+charge that exceeds a hard ceiling reaches `ANDON` without a helper.
 
-## Validation Gate (Phase 3)
+The rung is a three-state machine (auto -> helper -> human), never a jump
+straight to the operator:
 
-Extract verdict from council report:
-
-```bash
-REPORT=$(ls -t .agents/council/*vibe*.md 2>/dev/null | head -1)
-```
-
-Read and extract verdict.
-
-Gate logic:
-- **PASS:** Auto-proceed. Log: "Vibe: PASS"
-- **WARN:** Auto-proceed. Log: "Vibe: WARN -- see report for concerns"
-- **FAIL:** Retry loop (max 2 retries):
-  1. Read the full vibe report to extract specific failure reasons
-  1a. Extract ALL findings with structured fields (group by category if >20):
-      ```
-      For each finding, extract:
-        FINDING: <description> | FIX: <fix or recommendation> | REF: <ref or location>
-
-      Fallback for v1 findings: fix = finding.fix || finding.recommendation || "No fix specified"
-                                 ref = finding.ref || finding.location || "No reference"
-      ```
-  2. Log: "Vibe: FAIL (attempt N/3) -- retrying crank with feedback"
-  3. Re-invoke `$crank` with the epic-id AND the failure context including structured findings:
-     ```
-     $crank <epic-id> --context 'Vibe FAIL: <key issues>\nStructured findings:\nFINDING: X | FIX: Y | REF: Z' --test-first   # default strict-quality path
-     $crank <epic-id> --context 'Vibe FAIL: <key issues>\nStructured findings:\nFINDING: X | FIX: Y | REF: Z'                 # only when --no-test-first opted out
-     ```
-  4. Re-invoke `$validate` on the new changes
-  5. If still FAIL after 3 total attempts, stop with message:
-     "Vibe failed 3 times. Last report: <path>. Manual intervention needed."
-
-Store verdict in `rpi_state.verdicts.vibe`.
+- `HOLD -> ONE-HELPER` — a tripped breaker holds the bead and dispatches exactly
+  one bounded fresh-context (or cross-family) helper pass with the blocker,
+  evidence, and attempt history.
+- `HELPER-UNSTUCK -> AUTO-REDO` — if the helper clears the blocker, control
+  returns to an explicit orchestrator decision and the proof is re-run
+  automatically; no human is paged.
+- `HELPER-ESCALATE -> HUMAN` — only when that single helper pass also fails (or
+  the class is a refusal/judgment/spent-ceiling skip) does the bead reach the
+  operator.

@@ -2,11 +2,12 @@
 
 | Failure | Behavior |
 |---------|----------|
-| Skill invocation fails | Log error, retry once. If still fails, stop with checkpoint. |
-| User abandons at sub-skill gate | $rpi stops with checkpoint (only in --interactive mode) |
-| $crank returns BLOCKED | Re-crank with context (max 2 retries). If still blocked, stop. |
-| $crank returns PARTIAL | Re-crank remaining items with context (max 2 retries). If still partial, stop. |
-| Pre-mortem FAIL | Re-plan with fail feedback, re-run pre-mortem (max 3 total attempts) |
-| Vibe FAIL | Re-crank with fail feedback, re-run vibe (max 3 total attempts) |
-| Max retries exhausted | Take ONE bounded helper pass before the operator: hand the blocker, the evidence, and what was tried to a fresh context or cross-family model ($council, a fresh Codex session); resume on UNSTUCK. Only if the blocker survives that pass (or the class is refusal-lane / explicit-judgment / budget-exhausted — those skip the helper; no consult on a spent time/cost ceiling), stop with message + path to last report — that is what needs human attention. Never a second helper pass on the same blocker class. |
+| Skill invocation fails | Preserve the error and return it to the orchestrator for classification through the persistent governor. |
+| User abandons at sub-skill gate | /rpi stops with checkpoint (only in --interactive mode) |
+| /crank returns BLOCKED | Return evidence to the orchestrator; Crank does not own a retry decision. |
+| /crank returns PARTIAL | Return remaining-work evidence to the orchestrator; another wave requires a durable governor admission. |
+| Premortem FAIL | Return the immutable finding to the orchestrator; only an admitted changed plan may reach Premortem again. |
+| Validate WARN or FAIL | Preserve the verdict, run Learn, then let the orchestrator choose re-plan/retry/continue/stop/escalate. |
+| Breaker evidence appears | Submit the blocker class to the persistent governor. `HOLD` authorizes its helper; `ANDON` stops. Phase code never creates a helper allowance. |
+| Hard ceiling refuses admission | Stop with the governor receipt. A phase cannot reset usage, buy a helper, or replace the run state. |
 | Context feels degraded | Log warning, suggest starting new session with --from |

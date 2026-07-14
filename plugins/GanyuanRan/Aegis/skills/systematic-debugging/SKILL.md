@@ -148,6 +148,12 @@ Aegis impact/safety receipt.
    Decision: fix owner | continue investigation | escalate
    ```
 
+   After this gate fires, a locally green test does not erase it. Existing
+   checkpoint prose retains `PatchShape`, `CanonicalOwner`,
+   `UpwardDrillSignal`, `Decision`, outcome, and one bounded evidence ref.
+   Before an unplanned repair, compare invariant, owner seam, patch shape, and
+   topology; a renamed carrier is not a new direction.
+
    If the tempting fix is "just add a small guard/fallback", also run:
 
    ```text
@@ -266,7 +272,11 @@ Aegis impact/safety receipt.
 ### Phase 3: Hypothesis and Testing
 
 1. **Form single hypothesis**: "I think X is the root cause because Y" — be specific
-2. **Test minimally**: smallest possible change, one variable at a time. Prefer instrumentation over code edits while still proving the cause.
+2. **Prove minimally**: use the smallest reproduction or verification, one
+   variable at a time. Prefer instrumentation over code edits while still
+   proving the cause. A failing reproduction may be useful evidence, but it is
+   not a RED gate or a prerequisite for production edits unless an explicit
+   `TDD Route: strict` says so.
 3. **Verify**: worked? → Phase 4. Didn't? → Form NEW hypothesis. Don't stack fixes.
 4. **When you don't know**: say "I don't understand X", don't pretend
 5. **Run Reflection** at the end of each loop:
@@ -325,7 +335,11 @@ canonical owner.
 
 1. **Choose Reproduction and Verification**
    - Under explicit `TDD Route: strict`, create the smallest failing test before production code.
-   - With `TDD Mode: off` and no strict route, do not require a failing test first or RED / GREEN. Keep the smallest reproducible regression proof and targeted verification that fit the fix.
+   - With `TDD Mode: off` and no strict route, do not require a failing test
+     first or RED / GREEN. A pre-change failing reproduction is permitted when
+     it helps diagnosis, but label it as evidence rather than a production-edit
+     gate; keep the smallest reproducible regression proof and targeted
+     verification that fit the fix.
 
 2. **Implement Single Fix**
    - Address the root cause identified. ONE change at a time.

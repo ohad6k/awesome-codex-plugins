@@ -31,8 +31,8 @@ media automation for agents, or a native Hermes toolset for X/Twitter.
 
 - Published Python package with a native Hermes plugin entry point.
 - Installable from PyPI as `hermes-tweet`.
-- 99 agent-callable Xquik endpoints generated from OpenAPI.
-- 31 MPP-tagged read endpoints in the bundled catalog.
+- 106 agent-callable Xquik endpoints generated from OpenAPI.
+- 33 prepaid paid-read endpoints, including 7 direct per-call MPP routes.
 - Read and action tools are split for least-privilege operation.
 - Action endpoints are disabled by default.
 - Bundled Hermes skill for agent-facing usage guidance.
@@ -107,7 +107,7 @@ runtime locally.
 | Repository guide | [`github.com/Xquik-dev/hermes-tweet#readme`](https://github.com/Xquik-dev/hermes-tweet#readme) |
 | Context7 | [`context7.com/xquik-dev/hermes-tweet`](https://context7.com/xquik-dev/hermes-tweet) |
 | piwheels | [`hermes-tweet`](https://piwheels.org/project/hermes-tweet/) |
-| Latest release | [`v0.1.6`](https://github.com/Xquik-dev/hermes-tweet/releases/tag/v0.1.6) |
+| Prepared source version | `v0.1.8` |
 | Supported Python | `>=3.11` |
 | Package format | Wheel and source distribution |
 | Hermes entry point | `hermes-tweet = hermes_tweet` |
@@ -310,5 +310,5 @@ Recommended topics:
 
 `hermes-agent`, `hermes-plugin`, `hermes`, `twitter`, `x-api`,
 `x-automation`, `xquik`, `tweet`, `automation`, `social-media`,
-`social-media-automation`, `ai-agent`, `mcp`, `agent-tools`, `twitter-api`,
+`social-media-automation`, `ai-agent`, `agent-tools`, `twitter-api`,
 `twitter-automation`, `x-twitter`, `social-media-api`, `agent-skill`, `python`
