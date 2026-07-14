@@ -4,15 +4,15 @@
 
 **Default behavior:** `/rpi` ends after Learn and the orchestrator decision.
 
-**Enable loop:** pass `--loop` with the same stable run ID and persistent
-governor state.
+**Enable loop:** pass `--loop` with the same stable run ID.
 
 **Loop goal:** make retry, continue, stop, escalate, re-plan, and close explicit.
 
 **Loop decision input:** the latest schema-valid Learn receipt, bound to its
 immutable Validate verdict.
 
-1. Read `.agents/rpi/phase-4-summary.md` and the referenced Learn receipt.
+1. Read the canonical Learn receipt referenced by the execution packet. A
+   phase-4 summary, if present, is only a link-only compatibility projection.
 2. Verify the receipt's verdict digest and `plan_impact` disposition.
 3. Apply the disposition:
    - `material_change` with remaining work: the orchestrator invokes Discovery,
@@ -20,9 +20,8 @@ immutable Validate verdict.
    - `no_change` with remaining work: the orchestrator explicitly retries,
      continues, stops, or escalates;
    - `terminal`: close without another Premortem or `/rpi` invocation.
-4. Request the next action through the persistent governor. It owns admissions,
-   hard ceilings, oscillation/no-progress breakers, and helper eligibility;
-   Validate and Learn own none of those controls.
+4. Record the next action as one evidence-bound disposition. The orchestrator
+   owns the decision; Validate and Learn do not retry, escalate, or dispatch.
 
 ## Spawn Next Work (Optional) -- Learn Evidence to Queue Next RPI
 

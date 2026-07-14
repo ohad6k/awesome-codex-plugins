@@ -551,6 +551,21 @@
       "icon": "./plugins/reidemeister94/development-skills/assets/icon.svg"
     },
     {
+      "name": "ditto",
+      "displayName": "Ditto",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ohad6k/ditto"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development & Workflow",
+      "description": "Mines selected evidence from local coding-agent sessions into private work, design, and writing profiles for Codex, Claude Code, and GitHub Copilot.",
+      "icon": "./plugins/ohad6k/ditto/assets/ditto.svg"
+    },
+    {
       "name": "docflow",
       "displayName": "Docflow",
       "source": {

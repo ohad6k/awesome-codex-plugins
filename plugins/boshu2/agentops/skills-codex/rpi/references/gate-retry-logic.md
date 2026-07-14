@@ -5,20 +5,20 @@ their boundary; none converts its own result into a cross-phase retry.
 
 ## Premortem repair
 
-Premortem judges a plan. WARN or FAIL returns that plan to its author for a
-bounded repair and another Premortem. Between waves, the input must be an exact
-changed plan from an explicit orchestrator request. Validate and Learn cannot
-invoke Premortem.
+Premortem judges a plan. FAIL returns that plan to its author for one
+consolidated repair and narrow recheck. Between waves, reuse the bound verdict
+while plan inputs and risk are unchanged; only an exact materially changed plan
+from the orchestrator receives a new Premortem. Validate and Learn cannot invoke
+Premortem.
 
 ## Crank recovery
 
 Crank preserves transient worker failure evidence and returns DONE, PARTIAL,
 or BLOCKED at the wave boundary. It owns no retry allowance or task budget; a
-later action requires an explicit orchestrator decision and durable admission
-from the persistent governor. Crank does not invoke Discovery, Learn, or
-Premortem.
+later action requires an explicit orchestrator disposition. An unchanged wave
+does not route through Validate or Learn. Crank invokes no other umbrella.
 
-## Post-verdict decision
+## Final tranche post-verdict decision
 
 The required sequence is `Validate -> Learn -> orchestrator`:
 
@@ -43,16 +43,16 @@ the ordered completion packet still carries one receipt per umbrella.
 ## Stuckness and escalation
 
 Max-attempts, oscillation, and no-progress evidence are stuckness signals, not
-proof that human authority is required. The orchestrator submits them to the
-persistent governor. `HOLD` carries the matching blocker class and is the only
-state that authorizes a helper; `UNSTUCK` returns a new approach as `REPAIR`,
-and `ESCALATE` reaches `ANDON`. Explicit judgment or a positive projected
-charge that exceeds a hard ceiling reaches `ANDON` without a helper.
+proof that human authority is required. The orchestrator records `HOLD` with
+the matching blocker class and requests one bounded fresh-context consultation.
+`UNSTUCK` returns a new approach as `REPAIR`, and `ESCALATE` reaches `ANDON`.
+Explicit human-only judgment or a genuinely spent hard external ceiling may
+reach `ANDON` without a helper.
 
 The rung is a three-state machine (auto -> helper -> human), never a jump
 straight to the operator:
 
-- `HOLD -> ONE-HELPER` — a tripped breaker holds the bead and dispatches exactly
+- `HOLD -> ONE-HELPER` — stuckness holds the bead and dispatches exactly
   one bounded fresh-context (or cross-family) helper pass with the blocker,
   evidence, and attempt history.
 - `HELPER-UNSTUCK -> AUTO-REDO` — if the helper clears the blocker, control

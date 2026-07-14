@@ -2,7 +2,7 @@
   "generator": "manual-maintained",
   "source_root": "skills",
   "layout": "modular",
-  "codex_override_catalog_hash": "f55928be825fae09d60a9ad7729dcd1bfd6c8ddc053f45824f8a8129936d5a07",
+  "codex_override_catalog_hash": "7a0abcc6fc84aaec9d0339d7abb6a2bc9fd91512f1ab63a7cd609106fb940f74",
   "codex_override_catalog": {
     "version": 1,
     "description": "Machine-readable Codex treatment map for the full skill catalog.",
@@ -135,8 +135,8 @@
           ],
           "required_markers": [
             "In Codex hookless mode, run `ao codex ensure-start` before the first wave; the CLI records startup once per thread and skips duplicates automatically.",
-            "Prefer direct Codex session-agent orchestration for disjoint workers; preserve the source skill's one-wave boundary.",
-            "End after one wave. RPI routes evidence through `$validate`, `$learn`, and the orchestrator before another `$crank` invocation."
+            "Use the current leaf owner for one write scope; use Codex subagents only for at least two explicitly admitted disjoint lanes.",
+            "End after one wave and return targeted evidence to RPI. RPI may admit another unchanged wave without `$validate` or `$learn`; those run once only after the leaf is complete and frozen."
           ]
         }
       },
@@ -401,16 +401,13 @@
             "When beads are present, resolve bead IDs before routing; when beads are absent, preserve the current goal or execution-packet objective across phases.",
             "Keep a single lifecycle objective spine across discovery, crank, validation, and learning. Never replace it with a child issue ID or one ready slice from `br ready`, `br show`, or `.agents/rpi/next-work.jsonl`.",
             "If discovery does not yield an epic id, invoke `$crank .agents/rpi/execution-packet.json` and standalone `$validate` instead of inventing one.",
-            "If `$crank` returns `<promise>PARTIAL</promise>`, treat it as one completed wave: run `$validate` on that wave, pass the immutable verdict to `$learn`, and let the lead orchestrator consume `plan_impact` before deciding whether to invoke `$crank` again.",
+            "If `$crank` returns `<promise>PARTIAL</promise>`, compare the remaining work with the bound plan. Admit another unchanged wave below the three-wave and 90-minute boundary; at an incomplete soft boundary persist resume evidence and stop without `$validate`, `$learn`, or delivery.",
             "Orchestrate phases directly in the current session; do not hand RPI orchestration to wrapper commands.",
-            "Record phase receipts in `.agents/rpi/execution-packet.json` and each phase summary so `$discovery`, `$crank`, `$validate`, and `$learn` delegation is auditable from disk.",
-            "For Nightly, evolve, or auto-prompt goals, inspect the last 14 days of Nightly PRs and scheduled Nightly runs before choosing the implementation slice.",
-            "Classify recurring evidence as code-driven, runtime-artifact-only, or corpus-state-bound; prefer a code-driven fix unless the user explicitly asked for corpus maintenance.",
-            "Route `br` unavailability, tag push failures, worktree-disposition friction, and security/eval advisory recurrence as prompt/runtime debt rather than treating them as background noise.",
+            "Keep one ordered receipt index in `.agents/rpi/execution-packet.json` that points to canonical Discovery, Crank, Validate, and Learn artifacts; legacy phase summaries are optional link-only projections.",
             "Enforce `Validate -> Learn -> orchestrator`. Only the lead orchestrator may invoke `$discovery` to change the remaining plan and then `$premortem` on that exact changed plan.",
             "claim, release, and consume semantics exactly",
             "claim before work, consume on success, release on failure or interruption",
-            "Do not silently loop after a partial wave. Preserve the objective, route the wave through Validate and Learn, and make the next orchestrator decision explicit. Do not count runtime-only artifact flips or corpus-state flywheel movement as successful code improvement without a tracked source change or explicit operator request. Do not invoke Dream/overnight from RPI; use Dream evidence only as input, and keep code-mutating work in the RPI lifecycle."
+            "Do not silently loop after a partial wave. Preserve the objective and make the remaining-plan decision explicit; per-wave Validate, Learn, delivery, and duplicate summaries are forbidden."
           ]
         }
       },
@@ -545,7 +542,7 @@
         "name": "goal-design",
         "treatment": "parity_only",
         "wave": "catalog-parity",
-        "reason": "Goal-design packet authoring is a shared loop input with Codex helper usage and checker handoff. Hookless startup guard is catalog-declared so parity regens preserve it (age-dcek refute-fix).",
+        "reason": "Goal-design packet authoring is a deterministic loop input; Premortem alone owns later semantic plan readiness. Hookless startup stays catalog-declared for parity regeneration.",
         "operator_contract": {
           "required_markers": [
             "In Codex hookless mode, run `ao codex ensure-start`; the CLI records startup once per thread and skips duplicates automatically."
@@ -565,7 +562,7 @@
         "name": "dueling-idea-genies",
         "treatment": "parity_only",
         "wave": "catalog-parity",
-        "reason": "Sealed challenge artifact and plan-pawl handoff are runtime-portable."
+        "reason": "Sealed advisory challenge artifact and Plan handoff are runtime-portable; the skill emits no readiness verdict."
       },
       {
         "name": "codebase-recon",
@@ -633,8 +630,8 @@
     {
       "name": "behavior-first-planning",
       "source_skill": "skills/behavior-first-planning",
-      "source_hash": "8b866456a24ec80e2159fadc5985917f0567785e4583025a405a92d2022ff8ee",
-      "generated_hash": "a0989298707f276641f951c8fea909daafff33ae77af1b44b09df1411cfb7b2c"
+      "source_hash": "3d7b37787a23f86ef95bb3cc1133e0cc875a471ee56017d5c90cb7d5a4cdb1a1",
+      "generated_hash": "ee0194aa38c688fa4d533b690fcb8ca4d22fc37eda0556a24b2dd559ec584af3"
     },
     {
       "name": "bootstrap",
@@ -687,8 +684,8 @@
     {
       "name": "crank",
       "source_skill": "skills/crank",
-      "source_hash": "7b329fbb1d9d0777c7a24b1b7b4c5c612adddc2659f97237cfd6c5f398fea675",
-      "generated_hash": "804fb791cba23e2b5ebc050fce94526066fcd8fb59bd392f7967a6d2b32ff887"
+      "source_hash": "6f612f898cfa2a7814dfb79e9b615dd50ceb83abb813c0ef01d4dc999880a4eb",
+      "generated_hash": "1829c9cd4650ae66a84247ac53af32c97d3b79c68104c1868e384828e97e7ec3"
     },
     {
       "name": "dcg",
@@ -699,8 +696,8 @@
     {
       "name": "discovery",
       "source_skill": "skills/discovery",
-      "source_hash": "fab004d4a3ae2cce237038c2d87180b7a294bd5cbd51757d142496066849d391",
-      "generated_hash": "739d54568ca391f0c93e9857e48b367398e0781977f199b4fca495e70c1a77b5"
+      "source_hash": "003ba39c00b31b1228d6675cd6e162b2fe0d73b0af5b3ad112e3055e61d393db",
+      "generated_hash": "e0d7822d4f1394c7ec4e233316f4d00c7e81b436b6e4b885b80ceb18556dd6dd"
     },
     {
       "name": "doc",
@@ -717,8 +714,8 @@
     {
       "name": "dueling-idea-genies",
       "source_skill": "skills/dueling-idea-genies",
-      "source_hash": "eade92a2f20e6bde617c6b2bd51d8bbd3a65cea6898a03f8f38dbf18c4ab707f",
-      "generated_hash": "0617ee7c16bc0d16b44d195ba59481250cd39d6ac09a4806e6840f5a4c7f0ac0"
+      "source_hash": "aa6d9082488c5fe79001c6b5ae027c091b79b82c2df55bd3add4b8fb4c2998f5",
+      "generated_hash": "178385fd900500e4189c1dcaf5b8464fbeb8c0b60f209eae3d0fbd6c31a369d6"
     },
     {
       "name": "evolve",
@@ -735,8 +732,8 @@
     {
       "name": "goal-design",
       "source_skill": "skills/goal-design",
-      "source_hash": "923a75e28c9ec4f0d308734130a4b15c9316ab1b0498e4deb9d69d0bc5af093e",
-      "generated_hash": "72fee885387849c680c3324f01e820578d36538dee7281189f569255118a75eb"
+      "source_hash": "2f37af68cdf658a9532fd9e3631c07d4ee82e805e0e855a710f047aeea94eb3d",
+      "generated_hash": "08a30c689f394971d7174840e192a79fb4c7421dbba1ecaec86381db3cae1fda"
     },
     {
       "name": "goals",
@@ -771,8 +768,8 @@
     {
       "name": "learn",
       "source_skill": "skills/learn",
-      "source_hash": "58a0809ad126a7df99ea8676448ad1c52f356751d2785efe9cbc33e091b73522",
-      "generated_hash": "41b384b308d9473d9d22dd308b0f3f839424a4046016e19bc862085c054a18a5"
+      "source_hash": "48d47c513ef5aabd2437ca50564dba33a31017b01e689c5f17f5f7b2fac21dc4",
+      "generated_hash": "12f2e234b9ae68729056d502838dae92be8c8b6afa1fc9669c98cd9a0f3ad872"
     },
     {
       "name": "ms",
@@ -801,8 +798,8 @@
     {
       "name": "plan",
       "source_skill": "skills/plan",
-      "source_hash": "ab1c673c96b3837cbf2421d172bc1912d037c0f9fb02ebd5107f6fc55f92b4b6",
-      "generated_hash": "d509f076335980b7b20b55ebd9d2ac983531c4bc5c4330e658bcdbd7bad80cf4"
+      "source_hash": "8323b78e88d5a9aeef4a7857b17ff5163422980f7786990d8f6b8e5c9588c450",
+      "generated_hash": "4a738298638b0065102201427d42ffbccb2db759e64a63d45956710cc2867684"
     },
     {
       "name": "postmortem",
@@ -819,8 +816,8 @@
     {
       "name": "premortem",
       "source_skill": "skills/premortem",
-      "source_hash": "52c0c238bbbdc081ab2b0b022486444e9cf18fea8ec96649cc7e21811d05ea6c",
-      "generated_hash": "dad5c3fd7bbd2c6a5d4cbc678a4e77790bc088e79bcd174824d5f4d423d8905b"
+      "source_hash": "d78efaa27f4a29b7d0e12ff762e3fa832af6f21555a380957f1d16c45ad8dd02",
+      "generated_hash": "4e774cab3df133f66596a17e7e2dc3f7abac34f904bed7f8c40e6f5e9ca345f4"
     },
     {
       "name": "product",
@@ -867,14 +864,14 @@
     {
       "name": "reverse-engineer",
       "source_skill": "skills/reverse-engineer",
-      "source_hash": "a91f215a88b473ae2a7b7e139e6acc1803e1395fe70e97cbc2e0ff672a1931e9",
-      "generated_hash": "4fb92f9575f40e8a7a75a425b08a9bd32fb3347ddccfcd9ec4049d0df6e3759e"
+      "source_hash": "0d8775f29bbd377add7dfe3bc3ae61a46a0933518cdbbb270c5d6f38cb564d67",
+      "generated_hash": "99648e9868db2b1ea843e60b41b493819b95fda83aa76861e8f4f42c4094f5f0"
     },
     {
       "name": "rpi",
       "source_skill": "skills/rpi",
-      "source_hash": "2624ff386ed57eae302ad284bf35ae556d83f6dbc5923864651a23d72a4b727f",
-      "generated_hash": "0896bd24d0d46ab87c9f6e0c3a6f3bc54f335ce5f0837a59fccaf850ba741992"
+      "source_hash": "2471f4efe2e609e1f7ad47bf7ff72ca1f43ff4fc9a2bf783bc4054bfefd2ce4d",
+      "generated_hash": "ee15de5730331c8f95a8f30654a51505bb9550ef44996f453247131ed332f948"
     },
     {
       "name": "sbh",
@@ -903,8 +900,8 @@
     {
       "name": "shared",
       "source_skill": "skills/shared",
-      "source_hash": "d5b17d472014eb291265ebe8c5936edf7bebf713be26d0ef6fa821ca72a80de1",
-      "generated_hash": "9d6c7a340a0491735177092ec7c7f3f730583a8eb6fdb3940554c210fbdefbbd"
+      "source_hash": "e548beb13b9979fec13c1dffec5ffd6cc208d27d745d19faba8c6ef38214e904",
+      "generated_hash": "22529f4e267c2e2f609acc69f3b54d46f35cd263855debec580e755cdc93a623"
     },
     {
       "name": "skill-builder",
@@ -915,8 +912,8 @@
     {
       "name": "standards",
       "source_skill": "skills/standards",
-      "source_hash": "c49ec52cd31f5b6184ddedb60f0fccdb10fc2d199d0671bf6a855ecfa3039262",
-      "generated_hash": "68778b0783f0e6b40147511b435cd7bdc6f9b5f395cd3271ffcd2ed46c601a0e"
+      "source_hash": "18565ebad6bfa071b82eba93ddb826fbee20cc68adf0d9a156ccda06b29935f5",
+      "generated_hash": "4e35315c0626fb9e7b7e78cecbdde0ac5c54a43cec7724c6dd5df2843b10dc7f"
     },
     {
       "name": "status",
@@ -951,8 +948,8 @@
     {
       "name": "validate",
       "source_skill": "skills/validate",
-      "source_hash": "fb5f64d987c9e44128f1089096f705bbb1c1ff2b371aaeddaa18a09fb4b086d6",
-      "generated_hash": "5b2fe6677d13c9c11b5b7a088ffc8bb8675f368fddb3e54b4cdff648fa63031e"
+      "source_hash": "1214f13545b81d34da24ffd7d597c4987b4e8a76960cfad2889ba47073ce341a",
+      "generated_hash": "7221da5b384d62000a1d4b7a18120e11ab810481def9479f8d64bad2d8898c91"
     },
     {
       "name": "workflow-builder",
