@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "awesome-codex-plugins",
   "version": "1.0.0",
-  "last_updated": "2026-07-14",
-  "total": 167,
+  "last_updated": "2026-07-15",
+  "total": 168,
   "categories": [
     "Development & Workflow",
     "Tools & Integrations"
@@ -338,6 +338,16 @@
       "category": "Development & Workflow",
       "source": "awesome-codex-plugins",
       "install_url": "https://raw.githubusercontent.com/Rycen7822/codex-rg-guard/HEAD/.codex-plugin/plugin.json"
+    },
+    {
+      "name": "Codex TUI Proof",
+      "url": "https://github.com/bnc4vk/codex-tui-proof",
+      "owner": "bnc4vk",
+      "repo": "codex-tui-proof",
+      "description": "Visually validate real local terminal UIs in Codex's in-app browser with screenshots and session evidence.",
+      "category": "Development & Workflow",
+      "source": "awesome-codex-plugins",
+      "install_url": "https://raw.githubusercontent.com/bnc4vk/codex-tui-proof/HEAD/.codex-plugin/plugin.json"
     },
     {
       "name": "debt-ops",
